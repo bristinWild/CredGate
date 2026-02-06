@@ -1,0 +1,128 @@
+.logoContainer {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+}
+
+.logoWrap {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: grid;
+    place-items: center;
+}
+
+.logoGlow {
+    position: absolute;
+    inset: -18px;
+    background: radial-gradient(circle,
+            rgba(78, 242, 232, 0.35) 0%,
+            rgba(78, 242, 232, 0.12) 35%,
+            transparent 70%);
+    filter: blur(14px);
+    opacity: 0.8;
+    z-index: -1;
+}
+
+.logo {
+    transition: transform 0.35s ease;
+}
+
+.logoText {
+    position: relative;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-neon);
+    font-style: italic;
+    font-family: Copperplate;
+    letter-spacing: 0.5rem;
+
+    opacity: 0;
+    transform: translateX(-10px);
+    transition:
+        opacity 0.35s ease,
+        transform 0.35s ease;
+    white-space: nowrap;
+}
+
+.logoText::before,
+.logoText::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.logoText::before {
+    color: #00fff9;
+    /* cyan */
+    z-index: -1;
+}
+
+.logoText::after {
+    color: #ff4dff;
+    /* magenta */
+    z-index: -2;
+}
+
+/* Hover effects */
+.logoContainer:hover .logoText {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.logoContainer:hover .logo {
+    transform: scale(1.08);
+}
+
+.logoContainer:hover .logoText::before {
+    opacity: 0.7;
+    animation: glitchShift1 0.35s steps(2, end);
+}
+
+.logoContainer:hover .logoText::after {
+    opacity: 0.7;
+    animation: glitchShift2 0.35s steps(2, end);
+}
+
+@keyframes glitchShift1 {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    30% {
+        transform: translate(-2px, -1px);
+    }
+
+    60% {
+        transform: translate(2px, 1px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+@keyframes glitchShift2 {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    30% {
+        transform: translate(2px, 1px);
+    }
+
+    60% {
+        transform: translate(-2px, -1px);
+    }
+
+    100% {
+        transform: translate(0, 0);
+    }
+}

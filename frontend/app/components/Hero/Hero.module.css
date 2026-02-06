@@ -1,0 +1,61 @@
+.heroShell {
+    position: relative;
+    border-radius: 22px;
+    padding: 72px;
+    overflow: hidden;
+    background:
+        linear-gradient(120deg,
+            rgba(78, 242, 232, 0.08),
+            transparent 40%),
+        rgba(12, 18, 26, 0.85);
+    border: 1px solid rgba(78, 242, 232, 0.28);
+    box-shadow:
+        0 0 60px rgba(78, 242, 232, 0.12),
+        inset 0 0 30px rgba(78, 242, 232, 0.05);
+}
+
+.heroGlow {
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle,
+            rgba(78, 242, 232, 0.12),
+            transparent 60%);
+    animation: slowPulse 10s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes slowPulse {
+
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+
+    50% {
+        opacity: 0.9;
+    }
+}
+
+.heroTitle {
+    font-size: 4rem;
+    font-weight: 600;
+    color: var(--color-neon);
+    letter-spacing: -0.02em;
+    font-family: Copperplate;
+}
+
+.heroImage {
+    animation: float 8s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}

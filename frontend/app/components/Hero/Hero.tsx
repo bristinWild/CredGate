@@ -8,7 +8,6 @@ export default function Hero() {
                 <div className={styles.heroGlow} />
 
                 <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                    {/* Text */}
                     <div>
                         <h1 className={styles.heroTitle}>CredGate</h1>
 

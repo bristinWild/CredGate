@@ -1,0 +1,11 @@
+@keyframes drawLine {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.activityLine {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: drawLine 1.8s ease forwards;
+}

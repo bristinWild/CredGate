@@ -44,3 +44,17 @@ body {
 .glow-pulse {
   animation: glow-pulse 6s ease-in-out infinite;
 }
+
+.dashboardCard {
+  position: relative;
+  border-radius: 18px;
+  padding: 26px;
+  background:
+    linear-gradient(180deg, rgba(78, 242, 232, 0.05), transparent),
+    rgba(10, 16, 22, 0.85);
+
+  border: 1px solid rgba(78, 242, 232, 0.28);
+  box-shadow:
+    0 0 40px rgba(78, 242, 232, 0.12),
+    inset 0 0 18px rgba(78, 242, 232, 0.04);
+}

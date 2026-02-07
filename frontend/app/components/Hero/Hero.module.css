@@ -42,6 +42,7 @@
     color: var(--color-neon);
     letter-spacing: -0.02em;
     font-family: Copperplate;
+    letter-spacing: 0.5rem;
 }
 
 .heroImage {
@@ -58,4 +59,61 @@
     50% {
         transform: translateY(-10px);
     }
+}
+
+/* Neon CTA Button */
+.ctaButton {
+    position: relative;
+    margin-top: 28px;
+    padding: 14px 34px;
+
+    font-size: 0.9rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+
+    color: var(--color-neon);
+    background: transparent;
+
+    border-radius: 999px;
+    border: 1px solid rgba(78, 242, 232, 0.45);
+
+    cursor: pointer;
+    overflow: hidden;
+
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease;
+}
+
+/* Ambient glow */
+.ctaButton::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle,
+            rgba(78, 242, 232, 0.25),
+            transparent 60%);
+    opacity: 0.6;
+    filter: blur(18px);
+    z-index: -1;
+    transition: opacity 0.3s ease;
+}
+
+/* Hover state */
+.ctaButton:hover {
+    background: rgba(78, 242, 232, 0.08);
+    box-shadow:
+        0 0 28px rgba(78, 242, 232, 0.35),
+        inset 0 0 14px rgba(78, 242, 232, 0.15);
+    transform: translateY(-1px);
+}
+
+.ctaButton:hover::before {
+    opacity: 1;
+}
+
+/* Press */
+.ctaButton:active {
+    transform: translateY(0);
 }

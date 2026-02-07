@@ -12,15 +12,19 @@ export default function Hero() {
                     <div>
                         <h1 className={styles.heroTitle}>CredGate</h1>
 
-                        {/* <p className="mt-6 text-xl font-style italic font-family Copperplate">
-                            Behaviour-driven credit protocol.
-                        </p> */}
-
-                        <p className="mt-4 text-sm text-[var(--color-muted)] max-w-xl leading-relaxed">
+                        <p className="mt-4 text-sm text-[var(--color-muted)] max-w-xl leading-relaxed " style={{
+                            fontFamily:
+                                "Georgia, 'Times New Roman', Times, serif",
+                            letterSpacing: "0.1rem",
+                        }}>
                             CredGate replaces over-collateralization with verifiable on-chain
                             reputation, using AI agents and Credion to generate a dynamic,
                             cross-chain credit score.
                         </p>
+
+                        <button className={styles.ctaButton}>
+                            Check Credit Score
+                        </button>
                     </div>
 
                     <div className="relative">
@@ -35,6 +39,6 @@ export default function Hero() {
                     </div>
                 </div>
             </div>
-        </section>
+        </section >
     );
 }

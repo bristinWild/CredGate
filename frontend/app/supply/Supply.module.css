@@ -1,0 +1,45 @@
+.card {
+    position: relative;
+    border-radius: 18px;
+    padding: 26px;
+
+    background:
+        linear-gradient(180deg, rgba(78, 242, 232, 0.06), transparent 60%),
+        rgba(8, 12, 16, 0.92);
+
+
+    border: none;
+
+    box-shadow:
+        0 0 40px rgba(0, 0, 0, 0.6),
+        inset 0 0 18px rgba(78, 242, 232, 0.05);
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+
+    border: 1px solid rgba(78, 242, 232, 0.55);
+    box-shadow:
+        0 0 18px rgba(78, 242, 232, 0.25);
+}
+
+.card.secondary {
+    box-shadow: 0 0 30px rgba(78, 242, 232, 0.08);
+}
+
+.card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+
+    background: linear-gradient(180deg,
+            rgba(78, 242, 232, 0.25),
+            transparent 40%);
+    opacity: 0.2;
+}

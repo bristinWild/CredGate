@@ -58,3 +58,12 @@ body {
     0 0 40px rgba(78, 242, 232, 0.12),
     inset 0 0 18px rgba(78, 242, 232, 0.04);
 }
+
+.group:hover {
+  transform: translateY(-6px);
+  transition: transform 0.4s ease;
+}
+
+.group:hover p {
+  color: #6EE7FF;
+}

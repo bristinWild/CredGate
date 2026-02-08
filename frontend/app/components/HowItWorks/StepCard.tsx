@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import styles from "@/app/components/HowItWorks/HowItWorks.module.css";
 
 interface StepCardProps {
     step: string;
     title: string;
     description: string;
-    icon: string;
+    iconSrc: string;
     align?: "left" | "right";
 }
 
@@ -15,7 +16,7 @@ export default function StepCard({
     step,
     title,
     description,
-    icon,
+    iconSrc,
     align = "left",
 }: StepCardProps) {
     const ref = useRef<HTMLDivElement>(null);
@@ -44,7 +45,15 @@ export default function StepCard({
         >
             <div className={styles.card} data-step={step}>
                 <div className={styles.cardInner}>
-                    <div className={styles.icon}>{icon}</div>
+                    <div className={styles.icon}>
+                        <Image
+                            src={iconSrc}
+                            alt={title}
+                            fill
+                            sizes="72px"
+                            style={{ objectFit: "contain" }}
+                        />
+                    </div>
                     <h3 className={styles.title}>{title}</h3>
                     <p className={styles.description}>{description}</p>
                     <span className={styles.step}>{step}</span>

@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { BlockchainModule } from './blockchain/blockchain.module';
-import { IndexerModule } from './indexer/indexer.module';
 import { WalletModule } from './wallet/wallet.module';
+import { ScoringService } from './scoring/scoring.service';
+import { ConfigModule } from '@nestjs/config';
+
 
 @Module({
-  imports: [BlockchainModule, IndexerModule, WalletModule],
+  imports: [ConfigModule.forRoot({
+    isGlobal: true,
+  }), WalletModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ScoringService],
 })
-export class AppModule {}
+export class AppModule { }

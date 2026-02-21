@@ -1,170 +1,115 @@
 import { Injectable } from "@nestjs/common";
-import { ethers } from "ethers";
-import { ProviderService } from "./provider.service";
-
-const AAVE_V3_POOL_MAINNET =
-    "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2";
+import axios from "axios";
 
 @Injectable()
 export class AaveService {
-    private contract: ethers.Contract;
+    constructor() {
+        if (!process.env.GRAPH_API_KEY) {
+            throw new Error("GRAPH_API_KEY not defined");
+        }
+    }
+    private SUBGRAPH_URL =
+        "https://gateway.thegraph.com/api/" +
+        process.env.GRAPH_API_KEY +
+        "/subgraphs/id/JCNWRypm7FYwV8fx5HhzZPSFaMxgkPuw4TnR3Gpi81zk";
 
-    constructor(private readonly providerService: ProviderService) {
-        const provider = this.providerService.getProvider();
+    private async fetchAllEvents(entity: string, address: string) {
+        const lower = address.toLowerCase();
+        const pageSize = 1000;
+        let skip = 0;
+        let all: any[] = [];
 
-        this.contract = new ethers.Contract(
-            AAVE_V3_POOL_MAINNET,
-            [
-                "event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint8 interestRateMode, uint256 borrowRate, uint16 indexed referralCode)",
-                "event Repay(address indexed reserve, address indexed user, address indexed repayer, uint256 amount, bool useATokens)",
-                "event LiquidationCall(address indexed collateralAsset, address indexed debtAsset, address indexed user, uint256 debtToCover, uint256 liquidatedCollateralAmount, address liquidator, bool receiveAToken)",
-            ],
-            provider
-        );
+
+        console.log("GRAPH URL:", this.SUBGRAPH_URL);
+
+        while (true) {
+            const query = `
+                {
+                ${entity}(
+                    where: { account_: { id: "${lower}" } }
+                    first: ${pageSize}
+                    skip: ${skip}
+                    orderBy: timestamp
+                    orderDirection: desc
+                ) {
+                    id
+                    amount
+                    timestamp
+                }
+                }
+                `;
+
+            console.log(query);
+
+            const response = await axios.post(this.SUBGRAPH_URL, { query });
+            if (response.data.errors) {
+                console.error("GRAPH ERROR:", response.data.errors);
+                throw new Error("Graph query failed");
+            }
+
+            const data = response.data.data[entity];
+            console.log(JSON.stringify(response.data, null, 2));
+
+            console.log("Querying entity:", entity);
+            console.log("Wallet:", lower);
+            console.log("Response:", JSON.stringify(response.data));
+
+            all.push(...data);
+
+            if (data.length < pageSize) break;
+            skip += pageSize;
+        }
+
+        return all;
     }
 
-    async getUserBorrows(address: string, fromBlock: number) {
-        const provider = this.providerService.getProvider();
-        const currentBlock = await provider.getBlockNumber();
+    private async fetchLiquidations(address: string) {
+        const lower = address.toLowerCase();
+        const pageSize = 1000;
+        let skip = 0;
+        let all: any[] = [];
 
-        const BORROW_TOPIC = ethers.id(
-            "Borrow(address,address,address,uint256,uint8,uint256,uint16)"
-        );
+        while (true) {
+            const query = `
+        {
+          liquidates(
+            where: { liquidatee_: { id: "${lower}" } }
+            first: ${pageSize}
+            skip: ${skip}
+            orderBy: timestamp
+            orderDirection: desc
+          ) {
+            id
+            timestamp
+            liquidator { id }
+          }
+        }
+        `;
 
-        const paddedAddress = ethers.zeroPadValue(address, 32);
+            const response = await axios.post(this.SUBGRAPH_URL, { query });
+            const data = response.data?.data?.liquidates ?? [];
 
-        const logs = await provider.getLogs({
-            address: this.contract.target as string,
-            fromBlock,
-            toBlock: currentBlock,
-            topics: [
-                BORROW_TOPIC,
-                null,
-                paddedAddress,
-            ],
-        });
+            all.push(...data);
 
-        console.log("Borrow logs fetched:", logs.length);
+            if (data.length < pageSize) break;
+            skip += pageSize;
+        }
 
-        return logs
-            .map((log) => {
-                const parsed = this.contract.interface.parseLog(log);
-                if (!parsed) return null;
-
-                return {
-                    type: "BORROW",
-                    reserve: parsed.args.reserve,
-                    user: parsed.args.user,
-                    onBehalfOf: parsed.args.onBehalfOf,
-                    amount: parsed.args.amount.toString(),
-                    interestRateMode: Number(parsed.args.interestRateMode),
-                    borrowRate: parsed.args.borrowRate?.toString() ?? null,
-                    blockNumber: log.blockNumber,
-                    txHash: log.transactionHash,
-                };
-            })
-            .filter((event) => event !== null);
+        return all;
     }
 
-    async getUserRepays(address: string, fromBlock: number) {
-        const provider = this.providerService.getProvider();
-        const currentBlock = await provider.getBlockNumber();
 
-        const REPAY_TOPIC = ethers.id(
-            "Repay(address,address,address,uint256,bool)"
-        );
-
-        const paddedAddress = ethers.zeroPadValue(address, 32);
-
-        const logs = await provider.getLogs({
-            address: this.contract.target as string,
-            fromBlock,
-            toBlock: currentBlock,
-            topics: [
-                REPAY_TOPIC,
-                null,
-                paddedAddress,
-            ],
-        });
-
-        console.log("Repay logs fetched:", logs.length);
-
-        return logs
-            .map((log) => {
-                const parsed = this.contract.interface.parseLog(log);
-                if (!parsed) return null;
-
-                return {
-                    type: "REPAY",
-                    reserve: parsed.args.reserve,
-                    user: parsed.args.user,
-                    repayer: parsed.args.repayer,
-                    amount: parsed.args.amount.toString(),
-                    useATokens: parsed.args.useATokens,
-                    blockNumber: log.blockNumber,
-                    txHash: log.transactionHash,
-                };
-            })
-            .filter((event) => event !== null);
-    }
-
-    async getUserLiquidations(address: string, fromBlock: number) {
-        const provider = this.providerService.getProvider();
-        const currentBlock = await provider.getBlockNumber();
-
-        const LIQUIDATION_TOPIC = ethers.id(
-            "LiquidationCall(address,address,address,uint256,uint256,address,bool)"
-        );
-
-        const paddedAddress = ethers.zeroPadValue(address, 32);
-
-        const logs = await provider.getLogs({
-            address: this.contract.target as string,
-            fromBlock,
-            toBlock: currentBlock,
-            topics: [
-                LIQUIDATION_TOPIC,
-                null,
-                null,
-                paddedAddress,
-            ],
-        });
-
-        console.log("Liquidation logs fetched:", logs.length);
-
-        return logs
-            .map((log) => {
-                const parsed = this.contract.interface.parseLog(log);
-                if (!parsed) return null;
-
-                return {
-                    type: "LIQUIDATION",
-                    collateralAsset: parsed.args.collateralAsset,
-                    debtAsset: parsed.args.debtAsset,
-                    user: parsed.args.user,
-                    debtToCover: parsed.args.debtToCover.toString(),
-                    liquidatedCollateralAmount:
-                        parsed.args.liquidatedCollateralAmount.toString(),
-                    liquidator: parsed.args.liquidator,
-                    blockNumber: log.blockNumber,
-                    txHash: log.transactionHash,
-                };
-            })
-            .filter((event) => event !== null);
-    }
-
-    async getUserAaveActivity(address: string, fromBlock: number) {
-        const borrows = await this.getUserBorrows(address, fromBlock);
-        const repays = await this.getUserRepays(address, fromBlock);
-        const liquidations = await this.getUserLiquidations(
-            address,
-            fromBlock
-        );
+    async getUserAaveActivity(address: string) {
+        const borrows = await this.fetchAllEvents("borrows", address);
+        const repays = await this.fetchAllEvents("repays", address);
+        const liquidations = await this.fetchLiquidations(address);
 
         return {
             borrows,
             repays,
-            liquidations,
+            liquidations
         };
     }
+
+
 }

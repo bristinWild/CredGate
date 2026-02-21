@@ -4,12 +4,13 @@ import { AppService } from './app.service';
 import { WalletModule } from './wallet/wallet.module';
 import { ScoreService } from './scoring/score.service';
 import { ConfigModule } from '@nestjs/config';
+import { BlockchainModule } from './blockchain/blockchain.module';
 
 
 @Module({
   imports: [ConfigModule.forRoot({
     isGlobal: true,
-  }), WalletModule],
+  }), WalletModule, BlockchainModule],
   controllers: [AppController],
   providers: [AppService, ScoreService],
 })

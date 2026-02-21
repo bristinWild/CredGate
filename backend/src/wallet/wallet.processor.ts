@@ -6,6 +6,7 @@ import { ScoreService } from "src/scoring/score.service";
 import { RiskService } from "src/scoring/risk.service";
 import { WalletMetrics } from "src/scoring/metrics.service";
 import { WalletRisk } from "src/scoring/risk.service";
+import { CreditRegistryService } from "src/blockchain/credit-registry.service";
 
 export interface WalletActivitySnapshot {
     address: string;
@@ -44,6 +45,7 @@ export class WalletProcessor {
         private readonly metricsService: MetricsService,
         private readonly scoreService: ScoreService,
         private readonly riskService: RiskService,
+        private readonly creditRegistryService: CreditRegistryService,
     ) { }
 
 
@@ -78,6 +80,15 @@ export class WalletProcessor {
 
         const score =
             this.scoreService.calculateScore(metrics, risk);
+
+        const onChainResult =
+            await this.creditRegistryService.pushScoreOnChain(
+                address,
+                metrics,
+                risk,
+                score
+            );
+
 
         return {
             address,

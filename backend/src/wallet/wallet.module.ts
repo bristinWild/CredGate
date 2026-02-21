@@ -5,8 +5,10 @@ import { AaveService } from 'src/blockchain/aave.service';
 import { ProviderService } from 'src/blockchain/provider.service';
 import { WalletProcessor } from './wallet.processor';
 import { WalletController } from './wallet.controller';
+import { ScoringModule } from 'src/scoring/scoring.module';
 
 @Module({
+  imports: [ScoringModule],
   providers: [WalletService, WalletProcessor, AaveService, ProviderService, WalletHistoryService],
   exports: [WalletService, WalletProcessor],
   controllers: [WalletController],

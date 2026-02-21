@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WalletModule } from './wallet/wallet.module';
-import { ScoringService } from './scoring/scoring.service';
+import { ScoreService } from './scoring/score.service';
 import { ConfigModule } from '@nestjs/config';
 
 
@@ -11,6 +11,6 @@ import { ConfigModule } from '@nestjs/config';
     isGlobal: true,
   }), WalletModule],
   controllers: [AppController],
-  providers: [AppService, ScoringService],
+  providers: [AppService, ScoreService],
 })
 export class AppModule { }

@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { WalletHistoryService } from "src/blockchain/wallet-history.service";
 import { AaveService } from "src/blockchain/aave.service";
+import { MetricsService } from "src/scoring/metrics.service";
+import { ScoreService } from "src/scoring/score.service";
+import { RiskService } from "src/scoring/risk.service";
+import { WalletMetrics } from "src/scoring/metrics.service";
+import { WalletRisk } from "src/scoring/risk.service";
 
 export interface WalletActivitySnapshot {
     address: string;
@@ -20,16 +25,29 @@ export interface WalletActivitySnapshot {
     meta: {
         analyzedAt: number;
     };
+
+    intelligence: {
+        metrics: WalletMetrics;
+        risk: WalletRisk;
+        creditScore: number;
+    };
 }
 
 const AAVE_DEPLOY_BLOCK = 16291127; // Aave V3 Mainnet deploy
+
 
 @Injectable()
 export class WalletProcessor {
     constructor(
         private readonly walletHistoryService: WalletHistoryService,
         private readonly aaveService: AaveService,
+        private readonly metricsService: MetricsService,
+        private readonly scoreService: ScoreService,
+        private readonly riskService: RiskService,
     ) { }
+
+
+
 
     async process(address: string): Promise<WalletActivitySnapshot> {
         const basicData =
@@ -52,6 +70,15 @@ export class WalletProcessor {
         const ethBalanceScore =
             Math.min(100, Number(basicData.ethBalance) * 10);
 
+        const metrics =
+            this.metricsService.buildMetrics(aaveActivity);
+
+        const risk =
+            this.riskService.evaluate(metrics);
+
+        const score =
+            this.scoreService.calculateScore(metrics, risk);
+
         return {
             address,
             basic: {
@@ -67,6 +94,11 @@ export class WalletProcessor {
             meta: {
                 analyzedAt: Date.now(),
             },
+            intelligence: {
+                metrics,
+                risk,
+                creditScore: score,
+            }
         };
     }
 }

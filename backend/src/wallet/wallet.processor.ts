@@ -32,10 +32,18 @@ export interface WalletActivitySnapshot {
         risk: WalletRisk;
         creditScore: number;
     };
+
+    onchain: {
+        status: "UPDATED" | "COOLDOWN_ACTIVE";
+        txHash?: string;
+        reportHash?: string;
+        remainingSeconds?: number;
+    };
+
 }
 
-const AAVE_DEPLOY_BLOCK = 16291127; // Aave V3 Mainnet deploy
 
+const jobStore = new Map<string, any>();
 
 @Injectable()
 export class WalletProcessor {
@@ -51,65 +59,160 @@ export class WalletProcessor {
 
 
 
-    async process(address: string): Promise<WalletActivitySnapshot> {
-        const basicData =
-            await this.walletHistoryService.getBasicWalletData(address);
+    // async process(address: string): Promise<WalletActivitySnapshot> {
 
-        const fromBlock = AAVE_DEPLOY_BLOCK;
+    //     console.time("PROCESS");
+    //     const basicData =
+    //         await this.walletHistoryService.getBasicWalletData(address);
 
-        const aaveActivity =
-            await this.aaveService.getUserAaveActivity(
+    //     const aaveActivity =
+    //         await this.aaveService.getUserAaveActivity(
+    //             address
+    //         );
+
+    //     const walletAgeBlocks =
+    //         await this.walletHistoryService.getWalletAgeInBlocks(address);
+
+    //     const activityLevel =
+    //         Math.min(100, basicData.txCount / 20);
+
+    //     const ethBalanceScore =
+    //         Math.min(100, Number(basicData.ethBalance) * 10);
+
+    //     const metrics =
+    //         this.metricsService.buildMetrics(aaveActivity);
+
+    //     const risk =
+    //         this.riskService.evaluate(metrics);
+
+    //     const score =
+    //         this.scoreService.calculateScore(metrics, risk);
+
+    //     // const onChainResult =
+    //     //     await this.creditRegistryService.pushScoreOnChain(
+    //     //         address,
+    //     //         metrics,
+    //     //         risk,
+    //     //         score
+    //     //     );
+
+    //     const onChainResult = {
+    //         status: "UPDATED",
+    //         txHash: "deferred",
+    //         reportHash: "deferred"
+    //     };
+
+    //     console.timeEnd("PROCESS");
+    //     return {
+    //         address,
+    //         basic: {
+    //             ethBalance: basicData.ethBalance,
+    //             txCount: basicData.txCount,
+    //             walletAgeBlocks: null, // temporarily disabled
+    //         },
+    //         aave: {
+    //             borrows: aaveActivity.borrows,
+    //             repays: aaveActivity.repays,
+    //             liquidations: aaveActivity.liquidations,
+    //         },
+    //         meta: {
+    //             analyzedAt: Date.now(),
+    //         },
+    //         intelligence: {
+    //             metrics,
+    //             risk,
+    //             creditScore: score,
+    //         },
+    //         onchain: onChainResult
+    //     };
+    // }
+
+    private async processAsync(address: string) {
+        try {
+            console.time("PROCESS");
+
+            const basicData =
+                await this.walletHistoryService.getBasicWalletData(address);
+
+            const aaveActivity =
+                await this.aaveService.getUserAaveActivity(address);
+
+            const metrics =
+                this.metricsService.buildMetrics(aaveActivity);
+
+            const risk =
+                this.riskService.evaluate(metrics);
+
+            const score =
+                this.scoreService.calculateScore(metrics, risk);
+
+            const onChainResult =
+                await this.creditRegistryService.pushScoreOnChain(
+                    address,
+                    metrics,
+                    risk,
+                    score
+                );
+
+            const snapshot = {
                 address,
-                fromBlock
-            );
+                basic: {
+                    ethBalance: basicData.ethBalance,
+                    txCount: basicData.txCount,
+                    walletAgeBlocks: null,
+                },
+                aave: {
+                    borrows: aaveActivity.borrows,
+                    repays: aaveActivity.repays,
+                    liquidations: aaveActivity.liquidations,
+                },
+                meta: {
+                    analyzedAt: Date.now(),
+                },
+                intelligence: {
+                    metrics,
+                    risk,
+                    creditScore: score,
+                },
+                onchain: onChainResult
+            };
 
-        const walletAgeBlocks =
-            await this.walletHistoryService.getWalletAgeInBlocks(address);
+            jobStore.set(address, {
+                status: "DONE",
+                result: snapshot
+            });
 
-        const activityLevel =
-            Math.min(100, basicData.txCount / 20);
+            console.timeEnd("PROCESS");
 
-        const ethBalanceScore =
-            Math.min(100, Number(basicData.ethBalance) * 10);
+        } catch (error) {
+            console.error("Async job failed:", error);
 
-        const metrics =
-            this.metricsService.buildMetrics(aaveActivity);
+            jobStore.set(address, {
+                status: "FAILED"
+            });
+        }
+    }
 
-        const risk =
-            this.riskService.evaluate(metrics);
 
-        const score =
-            this.scoreService.calculateScore(metrics, risk);
+    async startJob(address: string) {
+        const normalized = address.toLowerCase();
 
-        const onChainResult =
-            await this.creditRegistryService.pushScoreOnChain(
-                address,
-                metrics,
-                risk,
-                score
-            );
+        // Mark job as processing
+        jobStore.set(normalized, {
+            status: "PROCESSING"
+        });
 
+        // Run async in background
+        this.processAsync(normalized);
 
         return {
-            address,
-            basic: {
-                ethBalance: basicData.ethBalance,
-                txCount: basicData.txCount,
-                walletAgeBlocks: null, // temporarily disabled
-            },
-            aave: {
-                borrows: aaveActivity.borrows,
-                repays: aaveActivity.repays,
-                liquidations: aaveActivity.liquidations,
-            },
-            meta: {
-                analyzedAt: Date.now(),
-            },
-            intelligence: {
-                metrics,
-                risk,
-                creditScore: score,
-            }
+            status: "PROCESSING"
+        };
+    }
+
+    async getResult(address: string) {
+        return jobStore.get(address.toLowerCase()) ?? {
+            status: "NOT_FOUND"
         };
     }
 }

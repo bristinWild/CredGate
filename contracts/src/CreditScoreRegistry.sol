@@ -6,13 +6,15 @@ contract CreditScoreRegistry {
     struct CreditData {
         uint256 creditScore;
         uint256 riskScore;
-        uint256 updatedAt;      
-        bytes32 reportHash;    
+        uint256 stableScore;
+        uint256 scoringVersion;
+        uint256 updatedAt;
+        bytes32 reportHash;
     }
 
     mapping(address => CreditData) public scores;
 
-    address public scorer; 
+    address public scorer;
 
     uint256 public updateCooldown = 1 days;
 
@@ -20,6 +22,8 @@ contract CreditScoreRegistry {
         address indexed user,
         uint256 creditScore,
         uint256 riskScore,
+        uint256 stableScore,
+        uint256 scoringVersion,
         uint256 timestamp
     );
 
@@ -36,6 +40,8 @@ contract CreditScoreRegistry {
         address user,
         uint256 creditScore,
         uint256 riskScore,
+        uint256 stableScore,
+        uint256 scoringVersion,
         bytes32 reportHash
     ) external onlyScorer {
 
@@ -49,6 +55,8 @@ contract CreditScoreRegistry {
         scores[user] = CreditData({
             creditScore: creditScore,
             riskScore: riskScore,
+            stableScore: stableScore,
+            scoringVersion: scoringVersion,
             updatedAt: block.timestamp,
             reportHash: reportHash
         });
@@ -57,11 +65,17 @@ contract CreditScoreRegistry {
             user,
             creditScore,
             riskScore,
+            stableScore,
+            scoringVersion,
             block.timestamp
         );
     }
 
-    function getScore(address user) external view returns (CreditData memory) {
+    function getScore(address user)
+        external
+        view
+        returns (CreditData memory)
+    {
         return scores[user];
-    }   
+    }
 }

@@ -20,7 +20,7 @@ export class AaveService {
         let all: any[] = [];
 
 
-        console.log("GRAPH URL:", this.SUBGRAPH_URL);
+
 
         while (true) {
             const query = `
@@ -39,20 +39,16 @@ export class AaveService {
                 }
                 `;
 
-            console.log(query);
+
 
             const response = await axios.post(this.SUBGRAPH_URL, { query });
             if (response.data.errors) {
-                console.error("GRAPH ERROR:", response.data.errors);
+
                 throw new Error("Graph query failed");
             }
 
             const data = response.data.data[entity];
-            console.log(JSON.stringify(response.data, null, 2));
 
-            console.log("Querying entity:", entity);
-            console.log("Wallet:", lower);
-            console.log("Response:", JSON.stringify(response.data));
 
             all.push(...data);
 

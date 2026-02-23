@@ -6,6 +6,7 @@ import { ScoringModule } from 'src/scoring/scoring.module';
 import { BlockchainModule } from 'src/blockchain/blockchain.module';
 import { WalletHistoryService } from 'src/blockchain/wallet-history.service';
 
+
 @Module({
   imports: [
     ScoringModule,

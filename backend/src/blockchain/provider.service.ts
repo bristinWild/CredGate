@@ -12,8 +12,6 @@ export class ProviderService {
             throw new Error('SEPOLIA_RPC_URL is not defined');
         }
 
-        console.log('RPC URL:', process.env.SEPOLIA_RPC_URL);
-
         this.provider = new ethers.JsonRpcProvider(rpcUrl);
     }
 

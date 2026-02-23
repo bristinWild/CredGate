@@ -48,7 +48,7 @@ export class WalletHistoryService {
             },
         });
 
-        console.log("Etherscan txlist response:", response.data);
+        // console.log("Etherscan txlist response:", response.data);
 
         if (!response.data || response.data.status !== '1') {
             console.warn('Etherscan returned no tx data for', address);
@@ -89,10 +89,10 @@ export class WalletHistoryService {
             },
         });
 
-        console.log("Etherscan tokentx response:", response.data);
+        // console.log("Etherscan tokentx response:", response.data);
 
         if (!response.data || response.data.status !== '1') {
-            console.log("Etherscan returned no token tx data for", address);
+            // console.log("Etherscan returned no token tx data for", address);
             return [];
         }
 

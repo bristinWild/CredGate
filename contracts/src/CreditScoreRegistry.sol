@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.23;
 
 contract CreditScoreRegistry {
 
@@ -24,7 +24,8 @@ contract CreditScoreRegistry {
         uint256 riskScore,
         uint256 stableScore,
         uint256 scoringVersion,
-        uint256 timestamp
+        uint256 timestamp,
+        bytes32 reportHash
     );
 
     modifier onlyScorer() {
@@ -67,7 +68,8 @@ contract CreditScoreRegistry {
             riskScore,
             stableScore,
             scoringVersion,
-            block.timestamp
+            block.timestamp,
+            reportHash
         );
     }
 

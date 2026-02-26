@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { ethers, keccak256, toUtf8Bytes, InterfaceAbi } from "ethers";
 import artifact from "./abi/CreditScoreRegistry.json";
+import { WalletRisk } from "src/scoring/risk.service";
+import { WalletMetrics } from "src/scoring/metrics.service";
 
 export type OnChainResult =
     | {
@@ -13,13 +15,15 @@ export type OnChainResult =
         remainingSeconds: number;
     };
 
+const SCORING_VERSION = 2;
+
 @Injectable()
 export class CreditRegistryService {
     private contract: ethers.Contract;
 
     constructor() {
 
-        console.log("RPC URL:", process.env.RPC_URL);
+
         if (!process.env.RPC_URL) {
             throw new Error("RPC_URL not defined");
         }
@@ -55,15 +59,16 @@ export class CreditRegistryService {
     }
 
     async pushScoreOnChain(
-        user: string,
-        metrics: any,
-        risk: any,
-        score: number
+        address: string,
+        metrics: WalletMetrics,
+        risk: WalletRisk,
+        score: number,
+        stableScore: number
     ): Promise<OnChainResult> {
 
         try {
 
-            const current = await this.contract.scores(user);
+            const current = await this.contract.scores(address);
             const cooldown = await this.contract.updateCooldown();
 
             const lastUpdated = Number(current.updatedAt);
@@ -97,13 +102,27 @@ export class CreditRegistryService {
                 creditScore: score,
             };
 
+
             const intelligenceJson = JSON.stringify(reportObject);
             const reportHash = keccak256(toUtf8Bytes(intelligenceJson));
+            const creditScoreInt = Math.max(0, Math.floor(Number(score)));
+            const riskScoreInt = Math.max(0, Math.floor(Number(risk.riskScore)));
+            const stableScoreInt = Math.max(0, Math.floor(Number(stableScore)));
+
+            if (
+                Number.isNaN(creditScoreInt) ||
+                Number.isNaN(riskScoreInt) ||
+                Number.isNaN(stableScoreInt)
+            ) {
+                throw new Error("Invalid numeric value before on-chain push");
+            }
 
             const tx = await this.contract.updateScore(
-                user,
-                score,
-                risk.riskScore,
+                address,
+                creditScoreInt,
+                riskScoreInt,
+                stableScoreInt,
+                SCORING_VERSION,
                 reportHash
             );
 
@@ -115,7 +134,7 @@ export class CreditRegistryService {
 
         } catch (error: any) {
 
-            console.error("❌ On-chain update failed:", error);
+            console.error(" On-chain update failed:", error);
 
             throw new Error(
                 "Blockchain update failed. Please try again later."

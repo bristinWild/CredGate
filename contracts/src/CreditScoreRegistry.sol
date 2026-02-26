@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.23;
 
 contract CreditScoreRegistry {
 
     struct CreditData {
         uint256 creditScore;
         uint256 riskScore;
-        uint256 updatedAt;      
-        bytes32 reportHash;    
+        uint256 stableScore;
+        uint256 scoringVersion;
+        uint256 updatedAt;
+        bytes32 reportHash;
     }
 
     mapping(address => CreditData) public scores;
 
-    address public scorer; 
+    address public scorer;
 
     uint256 public updateCooldown = 1 days;
 
@@ -20,7 +22,10 @@ contract CreditScoreRegistry {
         address indexed user,
         uint256 creditScore,
         uint256 riskScore,
-        uint256 timestamp
+        uint256 stableScore,
+        uint256 scoringVersion,
+        uint256 timestamp,
+        bytes32 reportHash
     );
 
     modifier onlyScorer() {
@@ -36,6 +41,8 @@ contract CreditScoreRegistry {
         address user,
         uint256 creditScore,
         uint256 riskScore,
+        uint256 stableScore,
+        uint256 scoringVersion,
         bytes32 reportHash
     ) external onlyScorer {
 
@@ -49,6 +56,8 @@ contract CreditScoreRegistry {
         scores[user] = CreditData({
             creditScore: creditScore,
             riskScore: riskScore,
+            stableScore: stableScore,
+            scoringVersion: scoringVersion,
             updatedAt: block.timestamp,
             reportHash: reportHash
         });
@@ -57,11 +66,18 @@ contract CreditScoreRegistry {
             user,
             creditScore,
             riskScore,
-            block.timestamp
+            stableScore,
+            scoringVersion,
+            block.timestamp,
+            reportHash
         );
     }
 
-    function getScore(address user) external view returns (CreditData memory) {
+    function getScore(address user)
+        external
+        view
+        returns (CreditData memory)
+    {
         return scores[user];
-    }   
+    }
 }

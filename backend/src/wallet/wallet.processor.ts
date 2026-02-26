@@ -7,6 +7,9 @@ import { RiskService } from "src/scoring/risk.service";
 import { WalletMetrics } from "src/scoring/metrics.service";
 import { WalletRisk } from "src/scoring/risk.service";
 import { CreditRegistryService } from "src/blockchain/credit-registry.service";
+import { StablecoinTreasuryService } from "src/blockchain/stablecoin-treasury/stablecoin-treasury.service";
+import { StableTreasuryMetrics } from "src/blockchain/stablecoin-treasury/stablecoin-treasury.service";
+import { StableScoreService } from "src/scoring/stable-score.service";
 
 export interface WalletActivitySnapshot {
     address: string;
@@ -31,8 +34,11 @@ export interface WalletActivitySnapshot {
         metrics: WalletMetrics;
         risk: WalletRisk;
         creditScore: number;
+        stable: StableTreasuryMetrics & {
+            stableScore: number;
+            stableLevel: string;
+        };
     };
-
     onchain: {
         status: "UPDATED" | "COOLDOWN_ACTIVE";
         txHash?: string;
@@ -54,78 +60,9 @@ export class WalletProcessor {
         private readonly scoreService: ScoreService,
         private readonly riskService: RiskService,
         private readonly creditRegistryService: CreditRegistryService,
+        private readonly stablecoinTreasuryService: StablecoinTreasuryService,
+        private readonly stableScoreService: StableScoreService,
     ) { }
-
-
-
-
-    // async process(address: string): Promise<WalletActivitySnapshot> {
-
-    //     console.time("PROCESS");
-    //     const basicData =
-    //         await this.walletHistoryService.getBasicWalletData(address);
-
-    //     const aaveActivity =
-    //         await this.aaveService.getUserAaveActivity(
-    //             address
-    //         );
-
-    //     const walletAgeBlocks =
-    //         await this.walletHistoryService.getWalletAgeInBlocks(address);
-
-    //     const activityLevel =
-    //         Math.min(100, basicData.txCount / 20);
-
-    //     const ethBalanceScore =
-    //         Math.min(100, Number(basicData.ethBalance) * 10);
-
-    //     const metrics =
-    //         this.metricsService.buildMetrics(aaveActivity);
-
-    //     const risk =
-    //         this.riskService.evaluate(metrics);
-
-    //     const score =
-    //         this.scoreService.calculateScore(metrics, risk);
-
-    //     // const onChainResult =
-    //     //     await this.creditRegistryService.pushScoreOnChain(
-    //     //         address,
-    //     //         metrics,
-    //     //         risk,
-    //     //         score
-    //     //     );
-
-    //     const onChainResult = {
-    //         status: "UPDATED",
-    //         txHash: "deferred",
-    //         reportHash: "deferred"
-    //     };
-
-    //     console.timeEnd("PROCESS");
-    //     return {
-    //         address,
-    //         basic: {
-    //             ethBalance: basicData.ethBalance,
-    //             txCount: basicData.txCount,
-    //             walletAgeBlocks: null, // temporarily disabled
-    //         },
-    //         aave: {
-    //             borrows: aaveActivity.borrows,
-    //             repays: aaveActivity.repays,
-    //             liquidations: aaveActivity.liquidations,
-    //         },
-    //         meta: {
-    //             analyzedAt: Date.now(),
-    //         },
-    //         intelligence: {
-    //             metrics,
-    //             risk,
-    //             creditScore: score,
-    //         },
-    //         onchain: onChainResult
-    //     };
-    // }
 
     private async processAsync(address: string) {
         try {
@@ -137,21 +74,38 @@ export class WalletProcessor {
             const aaveActivity =
                 await this.aaveService.getUserAaveActivity(address);
 
+            const tokenTransfers =
+                await this.walletHistoryService.getTokenTransfers(address);
+            console.log("Token transfers:", tokenTransfers.length);
+
+            const stableMetrics =
+                this.stablecoinTreasuryService.analyze(
+                    address,
+                    tokenTransfers
+                );
+
+
+            const stableScore =
+                this.stableScoreService.score(stableMetrics);
+
             const metrics =
                 this.metricsService.buildMetrics(aaveActivity);
 
-            const risk =
-                this.riskService.evaluate(metrics);
+            const risk = this.riskService.evaluate(metrics, {
+                ...stableMetrics,
+                ...stableScore
+            });
 
             const score =
-                this.scoreService.calculateScore(metrics, risk);
+                this.scoreService.calculateScore(metrics, risk, basicData.walletAgeBlocks ?? undefined);
 
             const onChainResult =
                 await this.creditRegistryService.pushScoreOnChain(
                     address,
                     metrics,
                     risk,
-                    score
+                    score,
+                    stableScore.stableScore
                 );
 
             const snapshot = {
@@ -159,7 +113,7 @@ export class WalletProcessor {
                 basic: {
                     ethBalance: basicData.ethBalance,
                     txCount: basicData.txCount,
-                    walletAgeBlocks: null,
+                    walletAgeBlocks: basicData.walletAgeBlocks,
                 },
                 aave: {
                     borrows: aaveActivity.borrows,
@@ -173,9 +127,17 @@ export class WalletProcessor {
                     metrics,
                     risk,
                     creditScore: score,
+                    stable: {
+                        ...stableMetrics,
+                        ...stableScore
+                    },
                 },
-                onchain: onChainResult
+                onchain: onChainResult,
+
+
             };
+
+
 
             jobStore.set(address, {
                 status: "DONE",

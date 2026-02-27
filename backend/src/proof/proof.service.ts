@@ -9,23 +9,20 @@ export class ProofService {
     private readonly creditcoinRpc = 'https://rpc.usc-testnet2.creditcoin.network';
     private readonly uscAddress = '0x0627D559F023393288AF736407eBfd177FD36513';
 
-    private provider = new ethers.JsonRpcProvider(this.creditcoinRpc);
+    private provider: ethers.JsonRpcProvider;
+    private wallet: ethers.Wallet;
+    private usc: ethers.Contract;
 
-    private wallet = new ethers.Wallet(
-        process.env.PRIVATE_KEY!,
-        this.provider,
-    );
-
-    private usc = new ethers.Contract(
-        this.uscAddress,
-        CreditScoreUSC.abi,
-        this.wallet,
-    );
-
-    // Job status store (in-memory, replace with DB for production)
     private jobs: Map<string, { status: string; txHash?: string; error?: string }> = new Map();
 
-    // ─── Pre-flight Checks ────────────────────────────────────────────────────
+    constructor() {
+        this.provider = new ethers.JsonRpcProvider(this.creditcoinRpc);
+        this.provider.on('debug', (info: any) => console.dir(info, { depth: 10 }));
+        this.provider.getNetwork().then(network => console.dir(network, { depth: 10 }));
+
+        this.wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
+        this.usc = new ethers.Contract(this.uscAddress, CreditScoreUSC.abi, this.wallet);
+    }
 
     private async checkContractState(chainKey: number): Promise<void> {
         const aggregatorAddr: string = await this.usc.aggregator();
@@ -46,34 +43,23 @@ export class ProofService {
         console.log(`[PreFlight] Authorized source (chainKey ${chainKey}): ${authorizedSource}`);
     }
 
-    // ─── Helper ───────────────────────────────────────────────────────────────
-
-    private calculateTransactionIndex(
-        siblings: { hash: string; isLeft: boolean }[]
-    ): number {
+    private calculateTransactionIndex(siblings: { hash: string; isLeft: boolean }[]): number {
         let index = 0;
         for (let i = 0; i < siblings.length; i++) {
-            if (siblings[i].isLeft) {
-                index |= 1 << i;
-            }
+            if (siblings[i].isLeft) index |= 1 << i;
         }
         return index;
     }
 
-    // ─── Get Job Status ───────────────────────────────────────────────────────
-
     getJobStatus(jobId: string) {
         return this.jobs.get(jobId) ?? { status: 'not_found' };
     }
-
-    // ─── Async Proof Processing ───────────────────────────────────────────────
 
     private async _processInBackground(jobId: string, txHash: string): Promise<void> {
         const chainKey = 1;
 
         try {
             this.jobs.set(jobId, { status: 'checking_contract' });
-
             console.log('[Step 1] Running pre-flight contract state checks...');
             await this.checkContractState(chainKey);
 
@@ -83,9 +69,7 @@ export class ProofService {
             const tx = await sourceProvider.getTransaction(txHash);
 
             if (!tx || !tx.blockNumber) {
-                throw new BadRequestException(
-                    `Transaction ${txHash} not found or not yet mined on Sepolia.`
-                );
+                throw new BadRequestException(`Transaction ${txHash} not found or not yet mined.`);
             }
 
             const blockNumber = tx.blockNumber;
@@ -94,15 +78,9 @@ export class ProofService {
             this.jobs.set(jobId, { status: 'waiting_attestation' });
             console.log('[Step 3] Waiting for block attestation on USC...');
             const info = new chainInfo.PrecompileChainInfoProvider(this.provider);
+            console.log(`[Step 3] Waiting for Sepolia block ${blockNumber} to be attested...`);
 
-            console.log(`[Step 3] Waiting for Sepolia block ${blockNumber} to be attested..`);
-
-            await info.waitUntilHeightAttested(
-                chainKey,
-                blockNumber,
-                10000,
-                1800000,
-            );
+            await info.waitUntilHeightAttested(chainKey, blockNumber, 10000, 1800000);
             console.log('[Step 3] Block attested.');
 
             this.jobs.set(jobId, { status: 'generating_proof' });
@@ -118,25 +96,20 @@ export class ProofService {
             const proofResult = await proofGen.generateProof(txHash);
 
             if (!proofResult.success) {
-                throw new InternalServerErrorException(
-                    `Proof generation failed: ${proofResult.error}`
-                );
+                throw new InternalServerErrorException(`Proof generation failed: ${proofResult.error}`);
             }
 
             const proofData = proofResult.data;
-            console.log(`[Step 4] Proof generated. ChainKey from proof: ${proofData.chainKey}`);
+            console.log(`[Step 4] Proof generated. ChainKey: ${proofData.chainKey}`);
 
-            // Format siblings
             const formattedSiblings = proofData.merkleProof.siblings.map(
                 (s: { hash: string; isLeft: boolean }) => [s.hash, s.isLeft]
             );
 
-            // Ensure txBytes is hex string
             const txBytes = typeof proofData.txBytes === 'string'
                 ? proofData.txBytes
                 : ethers.hexlify(proofData.txBytes);
 
-            // Check if already processed
             console.log('[Step 6] Checking if query already processed...');
             const txIndex = this.calculateTransactionIndex(proofData.merkleProof.siblings);
             const txKey = ethers.keccak256(
@@ -147,9 +120,7 @@ export class ProofService {
             );
             const alreadyProcessed: boolean = await this.usc.processedQueries(txKey);
             if (alreadyProcessed) {
-                throw new BadRequestException(
-                    `This query has already been processed on-chain (txKey: ${txKey})`
-                );
+                throw new BadRequestException(`Query already processed (txKey: ${txKey})`);
             }
 
             this.jobs.set(jobId, { status: 'submitting' });
@@ -169,9 +140,7 @@ export class ProofService {
             const receipt = await txResponse.wait();
 
             if (receipt.status === 0) {
-                throw new InternalServerErrorException(
-                    `Transaction mined but reverted. Hash: ${txResponse.hash}`
-                );
+                throw new InternalServerErrorException(`Transaction reverted: ${txResponse.hash}`);
             }
 
             console.log(`[Step 8] Proof successfully submitted: ${txResponse.hash}`);
@@ -184,15 +153,10 @@ export class ProofService {
         }
     }
 
-    // ─── Public Entry Point ───────────────────────────────────────────────────
-
     async processTransaction(txHash: string): Promise<{ jobId: string; message: string }> {
         const jobId = `job_${txHash.slice(0, 10)}_${Date.now()}`;
         this.jobs.set(jobId, { status: 'queued' });
-
-        // Fire and forget — process in background
         this._processInBackground(jobId, txHash).catch(() => { });
-
         return {
             jobId,
             message: 'Proof processing started. Poll /proof/status/:jobId for updates.',

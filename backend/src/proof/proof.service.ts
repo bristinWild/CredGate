@@ -22,6 +22,9 @@ export class ProofService {
         this.wallet,
     );
 
+    // Job status store (in-memory, replace with DB for production)
+    private jobs: Map<string, { status: string; txHash?: string; error?: string }> = new Map();
+
     // ─── Pre-flight Checks ────────────────────────────────────────────────────
 
     private async checkContractState(chainKey: number): Promise<void> {
@@ -43,36 +46,6 @@ export class ProofService {
         console.log(`[PreFlight] Authorized source (chainKey ${chainKey}): ${authorizedSource}`);
     }
 
-    // ─── Static Call Simulation ───────────────────────────────────────────────
-
-    private async simulateSubmit(
-        proofData: any,
-        formattedSiblings: any[],
-    ): Promise<void> {
-        try {
-            await this.usc.submitScoreFromQuery.estimateGas(
-                proofData.chainKey,
-                proofData.headerNumber,
-                proofData.txBytes,
-                proofData.merkleProof.root,
-                formattedSiblings,
-                proofData.continuityProof.lowerEndpointDigest,
-                proofData.continuityProof.roots,
-                { gasLimit: 5_000_000 },
-            );
-            console.log('[Simulate] estimateGas passed — transaction should succeed.');
-        } catch (simErr: any) {
-            const reason =
-                simErr?.reason ||
-                simErr?.revert?.args?.[0] ||
-                simErr?.error?.message ||
-                simErr?.message ||
-                'Unknown revert reason';
-            console.error('[Simulate] estimateGas reverted:', reason);
-            throw new BadRequestException(`Contract simulation failed: ${reason}`);
-        }
-    }
-
     // ─── Helper ───────────────────────────────────────────────────────────────
 
     private calculateTransactionIndex(
@@ -87,17 +60,24 @@ export class ProofService {
         return index;
     }
 
-    // ─── Main Flow ────────────────────────────────────────────────────────────
+    // ─── Get Job Status ───────────────────────────────────────────────────────
 
-    async processTransaction(txHash: string): Promise<{ txHash: string }> {
+    getJobStatus(jobId: string) {
+        return this.jobs.get(jobId) ?? { status: 'not_found' };
+    }
+
+    // ─── Async Proof Processing ───────────────────────────────────────────────
+
+    private async _processInBackground(jobId: string, txHash: string): Promise<void> {
         const chainKey = 1;
 
         try {
-            // Step 1: Pre-flight checks
+            this.jobs.set(jobId, { status: 'checking_contract' });
+
             console.log('[Step 1] Running pre-flight contract state checks...');
             await this.checkContractState(chainKey);
 
-            // Step 2: Fetch source transaction from Sepolia
+            this.jobs.set(jobId, { status: 'fetching_tx' });
             console.log('[Step 2] Fetching transaction from Sepolia...');
             const sourceProvider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
             const tx = await sourceProvider.getTransaction(txHash);
@@ -111,25 +91,27 @@ export class ProofService {
             const blockNumber = tx.blockNumber;
             console.log(`[Step 2] Transaction found in block ${blockNumber}`);
 
-            // Step 3: Wait for USC attestation
+            this.jobs.set(jobId, { status: 'waiting_attestation' });
             console.log('[Step 3] Waiting for block attestation on USC...');
             const info = new chainInfo.PrecompileChainInfoProvider(this.provider);
+
+            console.log(`[Step 3] Waiting for Sepolia block ${blockNumber} to be attested..`);
 
             await info.waitUntilHeightAttested(
                 chainKey,
                 blockNumber,
                 10000,
-                600000,
+                1800000,
             );
             console.log('[Step 3] Block attested.');
 
-            // Step 4: Generate proof
+            this.jobs.set(jobId, { status: 'generating_proof' });
             console.log('[Step 4] Generating proof...');
             const ProverAPIProofGenerator =
                 require('@gluwa/cc-next-query-builder').proofGenerator.api.ProverAPIProofGenerator;
 
             const proofGen = new ProverAPIProofGenerator(
-                1,
+                chainKey,
                 'https://proof-gen-api.usc-testnet2.creditcoin.network',
             );
 
@@ -144,36 +126,17 @@ export class ProofService {
             const proofData = proofResult.data;
             console.log(`[Step 4] Proof generated. ChainKey from proof: ${proofData.chainKey}`);
 
-            console.log('[Debug] proofData keys:', Object.keys(proofData));
-            console.log('[Debug] txBytes length:', proofData.txBytes.length);
-            console.log('[Debug] txBytes first 20 bytes:', proofData.txBytes.slice(0, 20));
-            console.log('[Debug] headerNumber:', proofData.headerNumber);
-            console.log('[Debug] merkleProof root:', proofData.merkleProof.root);
-            console.log('[Debug] siblings count:', proofData.merkleProof.siblings.length);
-            console.log('[Debug] txBytes type:', typeof proofData.txBytes);
-            console.log('[Debug] txBytes constructor:', proofData.txBytes?.constructor?.name);
-            console.log('[Debug] txBytes raw:', JSON.stringify(proofData.txBytes).slice(0, 200));
-
-            const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-                ['uint8', 'bytes[]'],
-                proofData.txBytes
-            );
-
-            console.log('[Debug] txType from decode:', decoded[0].toString());
-            console.log('[Debug] chunks count:', decoded[1].length);
-
-            // Step 5: Format siblings
+            // Format siblings
             const formattedSiblings = proofData.merkleProof.siblings.map(
                 (s: { hash: string; isLeft: boolean }) => [s.hash, s.isLeft]
             );
 
+            // Ensure txBytes is hex string
             const txBytes = typeof proofData.txBytes === 'string'
                 ? proofData.txBytes
                 : ethers.hexlify(proofData.txBytes);
 
-            console.log('[Debug] txBytes hex prefix:', txBytes.slice(0, 20));
-
-            // Step 6: Check if already processed
+            // Check if already processed
             console.log('[Step 6] Checking if query already processed...');
             const txIndex = this.calculateTransactionIndex(proofData.merkleProof.siblings);
             const txKey = ethers.keccak256(
@@ -189,16 +152,12 @@ export class ProofService {
                 );
             }
 
-            // Step 7: Simulate via staticCall
-            // console.log('[Step 7] Simulating transaction via staticCall...');
-            // await this.simulateSubmit(proofData, formattedSiblings);
-
-            // Step 8: Submit proof on-chain
+            this.jobs.set(jobId, { status: 'submitting' });
             console.log('[Step 8] Submitting proof to USC...');
             const txResponse = await this.usc.submitScoreFromQuery(
                 proofData.chainKey,
                 proofData.headerNumber,
-                txBytes,  // use converted txBytes
+                txBytes,
                 proofData.merkleProof.root,
                 formattedSiblings,
                 proofData.continuityProof.lowerEndpointDigest,
@@ -216,17 +175,27 @@ export class ProofService {
             }
 
             console.log(`[Step 8] Proof successfully submitted: ${txResponse.hash}`);
-
-            return { txHash: txResponse.hash };
+            this.jobs.set(jobId, { status: 'success', txHash: txResponse.hash });
 
         } catch (err: any) {
-            // Re-throw NestJS HTTP exceptions untouched
-            if (err?.status) throw err;
-
-            console.error('[ProofService] Unhandled error:', err);
-            throw new InternalServerErrorException(
-                err?.shortMessage || err?.message || 'Unknown error occurred'
-            );
+            const message = err?.shortMessage || err?.message || 'Unknown error';
+            console.error('[ProofService] Error:', message);
+            this.jobs.set(jobId, { status: 'failed', error: message });
         }
+    }
+
+    // ─── Public Entry Point ───────────────────────────────────────────────────
+
+    async processTransaction(txHash: string): Promise<{ jobId: string; message: string }> {
+        const jobId = `job_${txHash.slice(0, 10)}_${Date.now()}`;
+        this.jobs.set(jobId, { status: 'queued' });
+
+        // Fire and forget — process in background
+        this._processInBackground(jobId, txHash).catch(() => { });
+
+        return {
+            jobId,
+            message: 'Proof processing started. Poll /proof/status/:jobId for updates.',
+        };
     }
 }

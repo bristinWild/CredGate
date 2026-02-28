@@ -21,7 +21,8 @@ export class WalletHistoryService {
         let walletAgeBlocks: number | null = null;
 
         if (history.firstTxBlock) {
-            walletAgeBlocks = currentBlock - Number(history.firstTxBlock);
+            const calculatedAge = currentBlock - Number(history.firstTxBlock);
+            walletAgeBlocks = calculatedAge > 0 ? calculatedAge : 0;
         }
 
         return {

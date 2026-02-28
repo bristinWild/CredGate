@@ -1,5 +1,5 @@
 import { Controller } from '@nestjs/common';
-import { Post, Body } from '@nestjs/common';
+import { Post, Body, Get, Param } from '@nestjs/common';
 import { ProofService } from './proof.service';
 
 
@@ -17,5 +17,10 @@ export class ProofController {
         return this.proofService.processTransaction(
             body.transactionHash,
         );
+    }
+
+    @Get('status/:jobId')
+    getStatus(@Param('jobId') jobId: string) {
+        return this.proofService.getJobStatus(jobId);
     }
 }

@@ -10,6 +10,10 @@ import { CreditRegistryService } from "src/blockchain/credit-registry.service";
 import { StablecoinTreasuryService } from "src/blockchain/stablecoin-treasury/stablecoin-treasury.service";
 import { StableTreasuryMetrics } from "src/blockchain/stablecoin-treasury/stablecoin-treasury.service";
 import { StableScoreService } from "src/scoring/stable-score.service";
+import { CrossChainService } from "src/crosschain/crosschain.service";
+import { CrossChainMetrics } from "src/crosschain/crosschain-metrics.interface";
+import { DexService } from "src/dex/dex.service";
+import { DexMetrics } from "src/dex/dex-metrics.interface";
 
 export interface WalletActivitySnapshot {
     address: string;
@@ -34,10 +38,26 @@ export interface WalletActivitySnapshot {
         metrics: WalletMetrics;
         risk: WalletRisk;
         creditScore: number;
+        scoreBreakdown: {
+            lending: number;
+            stable: number;
+            crossChain: number;
+            dex: number;
+            ageBonus: number;
+            riskPenalty: number;
+        };
         stable: StableTreasuryMetrics & {
             stableScore: number;
             stableLevel: string;
         };
+        crossChain: CrossChainMetrics
+        dex: DexMetrics;
+
+        loanProfile: {
+            recommendedLTV: number;
+            interestTier: string;
+            maxLoanSizeUSD: number;
+        }
     };
     onchain: {
         status: "UPDATED" | "COOLDOWN_ACTIVE";
@@ -62,6 +82,8 @@ export class WalletProcessor {
         private readonly creditRegistryService: CreditRegistryService,
         private readonly stablecoinTreasuryService: StablecoinTreasuryService,
         private readonly stableScoreService: StableScoreService,
+        private readonly crosschainService: CrossChainService,
+        private readonly dexService: DexService,
     ) { }
 
     private async processAsync(address: string) {
@@ -83,7 +105,10 @@ export class WalletProcessor {
                     address,
                     tokenTransfers
                 );
+            const crossChainMetrics =
+                await this.crosschainService.analyze(address);
 
+            const dexMetrics = await this.dexService.analyze(address);
 
             const stableScore =
                 this.stableScoreService.score(stableMetrics);
@@ -91,13 +116,42 @@ export class WalletProcessor {
             const metrics =
                 this.metricsService.buildMetrics(aaveActivity);
 
-            const risk = this.riskService.evaluate(metrics, {
-                ...stableMetrics,
-                ...stableScore
-            });
+            const walletAgeDays =
+                basicData.walletAgeBlocks
+                    ? (basicData.walletAgeBlocks * 12) / 86400
+                    : undefined;
 
-            const score =
-                this.scoreService.calculateScore(metrics, risk, basicData.walletAgeBlocks ?? undefined);
+            const risk = this.riskService.evaluate(
+                metrics,
+                { ...stableMetrics, ...stableScore },
+                crossChainMetrics,
+                dexMetrics,
+                {
+                    walletAgeDays,
+                    totalTx: basicData.txCount
+                }
+            );
+
+
+
+            const scoreResult =
+                this.scoreService.calculateScore(
+                    metrics,
+                    risk,
+                    stableScore,
+                    crossChainMetrics,
+                    dexMetrics,
+                    basicData.walletAgeBlocks ?? undefined
+                );
+
+            const score = scoreResult.finalScore;
+
+            const loanProfile = this.buildLoanProfile(
+                score,
+                risk.riskScore,
+                stableMetrics.netFlow,
+                Number(basicData.ethBalance)
+            );
 
             const onChainResult =
                 await this.creditRegistryService.pushScoreOnChain(
@@ -127,10 +181,14 @@ export class WalletProcessor {
                     metrics,
                     risk,
                     creditScore: score,
+                    scoreBreakdown: scoreResult.breakdown,
                     stable: {
                         ...stableMetrics,
                         ...stableScore
                     },
+                    crossChain: crossChainMetrics,
+                    dex: dexMetrics,
+                    loanProfile,
                 },
                 onchain: onChainResult,
 
@@ -169,6 +227,50 @@ export class WalletProcessor {
 
         return {
             status: "PROCESSING"
+        };
+    }
+
+
+    private buildLoanProfile(
+        creditScore: number,
+        riskScore: number,
+        netFlow: number,
+        ethBalance: number
+    ) {
+
+        let recommendedLTV = 0;
+        let interestTier = "REJECT";
+        let maxLoanSizeUSD = 0;
+
+        if (creditScore >= 75) {
+            recommendedLTV = 70;
+            interestTier = "PRIME";
+        } else if (creditScore >= 60) {
+            recommendedLTV = 60;
+            interestTier = "PREFERRED";
+        } else if (creditScore >= 45) {
+            recommendedLTV = 50;
+            interestTier = "STANDARD";
+        } else if (creditScore >= 30) {
+            recommendedLTV = 35;
+            interestTier = "HIGH_RISK";
+        }
+
+        if (riskScore > 70) {
+            recommendedLTV *= 0.5;
+        } else if (riskScore > 55) {
+            recommendedLTV *= 0.7;
+        }
+
+        // Capital based loan size
+        const capitalBase = Math.max(0, netFlow);
+
+        maxLoanSizeUSD = Math.max(0, capitalBase * (recommendedLTV / 100));
+
+        return {
+            recommendedLTV,
+            interestTier,
+            maxLoanSizeUSD: Math.floor(maxLoanSizeUSD)
         };
     }
 

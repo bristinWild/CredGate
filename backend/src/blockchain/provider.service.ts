@@ -6,7 +6,7 @@ export class ProviderService {
     private provider: ethers.JsonRpcProvider;
 
     constructor() {
-        const rpcUrl = process.env.SEPOLIA_RPC_URL;
+        const rpcUrl = process.env.MAINNET_RPC_URL;
 
         if (!rpcUrl) {
             throw new Error('SEPOLIA_RPC_URL is not defined');

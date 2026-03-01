@@ -8,6 +8,16 @@ interface INativeQueryVerifier {
     struct MerkleProof { bytes32 root; MerkleProofEntry[] siblings; }
     struct ContinuityProof { bytes32 lowerEndpointDigest; bytes32[] roots; }
 
+    // no event emission
+    function verify(
+        uint64 chainKey,
+        uint64 height,
+        bytes calldata encodedTransaction,
+        MerkleProof calldata merkleProof,
+        ContinuityProof calldata continuityProof
+    ) external view returns (bool);
+
+    // state-changing, emits TransactionVerified event
     function verifyAndEmit(
         uint64 chainKey,
         uint64 height,
@@ -110,13 +120,22 @@ contract CreditScoreUSC {
             });
 
         // Verify proof via precompile
-      bool verified = true;
+    //   bool verified = true;
+
+bool verified = VERIFIER.verify(
+    chainKey,
+    blockHeight,
+    encodedTransaction,
+    merkleProof,
+    continuityProof
+);
+require(verified, "Proof verification failed");
 
         // Mark as processed
         processedQueries[txKey] = true;
 
         // Extract score event from encoded transaction
-        (
+            (
             address user,
             uint256 creditScore,
             uint256 riskScore,
@@ -124,7 +143,9 @@ contract CreditScoreUSC {
             uint256 scoringVersion,
             bytes32 reportHash,
             address emitter,
+            bool receiptSuccess
         ) = _extractScoreEvent(encodedTransaction);
+        require(receiptSuccess, "Source tx failed");
 
         // Validate emitter is authorized source contract
         require(
@@ -164,7 +185,7 @@ contract CreditScoreUSC {
         uint256 stableScore,
         uint256 scoringVersion,
         bytes32 reportHash
-    ) external {
+    ) external onlyAdmin {
         require(address(aggregator) != address(0), "Aggregator not set");
 
         aggregator.updateChainReport(

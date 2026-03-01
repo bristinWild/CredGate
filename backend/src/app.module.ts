@@ -10,6 +10,8 @@ import { ProofController } from './proof/proof.controller';
 import { DexService } from './dex/dex.service';
 import { CrossChainModule } from './crosschain/crosschain.module';
 import { DexModule } from './dex/dex.module';
+import { CronModule } from './cron/cron.module';
+import { ProofModule } from './proof/proof.module';
 
 
 
@@ -17,7 +19,7 @@ import { DexModule } from './dex/dex.module';
 @Module({
   imports: [ConfigModule.forRoot({
     isGlobal: true,
-  }), WalletModule, BlockchainModule, CrossChainModule, DexModule,],
+  }), WalletModule, BlockchainModule, CrossChainModule, DexModule, CronModule, ProofModule,],
   controllers: [AppController, ProofController],
   providers: [AppService, ScoreService, ProofService, DexService],
 })

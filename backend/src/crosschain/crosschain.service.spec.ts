@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CrosschainService } from './crosschain.service';
+import { CrossChainService } from './crosschain.service';
 
 describe('CrosschainService', () => {
-  let service: CrosschainService;
+  let service: CrossChainService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CrosschainService],
+      providers: [CrossChainService],
     }).compile();
 
-    service = module.get<CrosschainService>(CrosschainService);
+    service = module.get<CrossChainService>(CrossChainService);
   });
 
   it('should be defined', () => {

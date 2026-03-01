@@ -7,7 +7,7 @@ import CreditScoreUSC from '../blockchain/abi/CreditScoreUSC.json';
 export class ProofService {
 
     private readonly creditcoinRpc = 'https://rpc.usc-testnet2.creditcoin.network';
-    private readonly uscAddress = '0x0627D559F023393288AF736407eBfd177FD36513';
+    private readonly uscAddress = '0x620431B91db7a499eeC0eC9a4c817dA3B5A90861';
 
     private provider: ethers.JsonRpcProvider;
     private wallet: ethers.Wallet;
@@ -133,7 +133,11 @@ export class ProofService {
                 formattedSiblings,
                 proofData.continuityProof.lowerEndpointDigest,
                 proofData.continuityProof.roots,
-                { gasLimit: 5_000_000 },
+                {
+                    gasLimit: 5_000_000,
+                    type: 0,
+                    gasPrice: ethers.parseUnits('1', 'gwei')
+                },
             );
 
             console.log(`[Step 8] Transaction sent: ${txResponse.hash}`);

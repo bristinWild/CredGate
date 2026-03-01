@@ -149,7 +149,7 @@ export class WalletProcessor {
             const loanProfile = this.buildLoanProfile(
                 score,
                 risk.riskScore,
-                stableMetrics.netFlow,
+                stableMetrics,
                 Number(basicData.ethBalance)
             );
 
@@ -234,13 +234,19 @@ export class WalletProcessor {
     private buildLoanProfile(
         creditScore: number,
         riskScore: number,
-        netFlow: number,
+        stableMetrics: {
+            totalInflow: number;
+            retentionRatio: number;
+            netFlow: number;
+            activeMonths: number;
+            avgHoldingDays: number;
+        },
         ethBalance: number
     ) {
 
         let recommendedLTV = 0;
         let interestTier = "REJECT";
-        let maxLoanSizeUSD = 0;
+
 
         if (creditScore >= 75) {
             recommendedLTV = 70;
@@ -263,12 +269,29 @@ export class WalletProcessor {
         }
 
         // Capital based loan size
-        const capitalBase = Math.max(0, netFlow);
+        let capitalBase = stableMetrics.totalInflow * stableMetrics.retentionRatio;
+        if (stableMetrics.avgHoldingDays < 1) {
+            capitalBase *= 0.1;
+        }
 
-        maxLoanSizeUSD = Math.max(0, capitalBase * (recommendedLTV / 100));
+        if (stableMetrics.activeMonths < 2) {
+            capitalBase *= 0.3;
+        }
+
+        if (stableMetrics.netFlow < -1000) {
+            const drainRatio = Math.abs(stableMetrics.netFlow) / (stableMetrics.totalInflow + 1);
+            capitalBase *= Math.max(0.1, 1 - drainRatio);
+        }
+
+        capitalBase = Math.min(capitalBase, 500_000);
+
+        const maxLoanSizeUSD = Math.max(
+            0,
+            capitalBase * (recommendedLTV / 100)
+        );
 
         return {
-            recommendedLTV,
+            recommendedLTV: Math.round(recommendedLTV),
             interestTier,
             maxLoanSizeUSD: Math.floor(maxLoanSizeUSD)
         };

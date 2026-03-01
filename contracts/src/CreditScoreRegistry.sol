@@ -15,8 +15,7 @@ contract CreditScoreRegistry {
     mapping(address => CreditData) public scores;
 
     address public scorer;
-
-    uint256 public updateCooldown = 1 days;
+    uint256 public updateCooldown = 5 minutes;
 
     event ScoreUpdated(
         address indexed user,
@@ -79,5 +78,13 @@ contract CreditScoreRegistry {
         returns (CreditData memory)
     {
         return scores[user];
+    }
+
+    function setScorer(address _scorer) external onlyScorer {
+        scorer = _scorer;
+    }
+
+    function setCooldown(uint256 _seconds) external onlyScorer {
+        updateCooldown = _seconds;
     }
 }

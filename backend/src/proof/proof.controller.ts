@@ -3,9 +3,11 @@ import { Post, Body, Get, Param } from '@nestjs/common';
 import { ProofService } from './proof.service';
 
 
+
 @Controller('proof')
 export class ProofController {
-    constructor(private readonly proofService: ProofService) { }
+    constructor(private readonly proofService: ProofService
+    ) { }
 
     @Post("verify")
     async verify(
@@ -23,4 +25,6 @@ export class ProofController {
     getStatus(@Param('jobId') jobId: string) {
         return this.proofService.getJobStatus(jobId);
     }
+
+
 }

@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import Providers from "@/app/providers";
 
 export const metadata: Metadata = {
   title: "CredGate",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-[var(--color-bg)] text-white antialiased">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

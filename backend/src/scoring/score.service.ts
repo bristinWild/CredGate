@@ -32,7 +32,7 @@ export class ScoreService {
         // Stable
 
         const stableScore = Math.min(
-            30,
+            35,
             (stable?.stableScore ?? 0) *
             SCORE_WEIGHTS.stableMultiplier
         );
@@ -65,7 +65,7 @@ export class ScoreService {
 
             ageBonus = Math.min(
                 SCORE_WEIGHTS.ageMax,
-                Math.log(walletAgeDays + 1) * 2
+                Math.log(walletAgeDays + 1) * 2.5
             );
         }
 

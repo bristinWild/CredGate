@@ -9,9 +9,9 @@ import styles from "./Navbar.module.css";
 
 const NAV_ITEMS = [
     { label: "Dashboard", href: "/dashboard" },
-    { label: "Supply Asset", href: "/supply" },
-    { label: "Borrow Asset", href: "/borrow" },
-    { label: "RWA", href: "/rwa" },
+    { label: "CredLend", href: "/credlend" },
+    { label: "Docs", href: "/docs" },
+
 ];
 
 function shortAddress(addr: string) {
@@ -27,7 +27,7 @@ function WalletButton() {
     if (isConnected && address) {
         return (
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {/* Connected indicator */}
+
                 <div style={{
                     display: "flex", alignItems: "center", gap: "8px",
                     padding: "8px 16px", borderRadius: "999px",
@@ -49,7 +49,7 @@ function WalletButton() {
                     </span>
                 </div>
 
-                {/* Disconnect */}
+
                 <button
                     onClick={() => disconnect()}
                     style={{
@@ -128,7 +128,6 @@ export default function Navbar() {
                 })}
             </nav>
 
-            {/* Wallet button — connected or not */}
             <WalletButton />
         </header>
     );

@@ -105,6 +105,8 @@ export class WalletProcessor {
                     address,
                     tokenTransfers
                 );
+            console.log("Sample transfers:", JSON.stringify(tokenTransfers.slice(0, 3), null, 2));
+            console.log("Total transfers:", tokenTransfers.length);
             const crossChainMetrics =
                 await this.crosschainService.analyze(address);
 

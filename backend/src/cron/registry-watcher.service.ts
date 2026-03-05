@@ -10,14 +10,14 @@ const REGISTRY_ABI = [
 export class RegistryWatcherService implements OnModuleInit {
 
     private readonly logger = new Logger(RegistryWatcherService.name);
-    private provider: ethers.JsonRpcProvider;
+    private provider: ethers.WebSocketProvider;
     private contract: ethers.Contract;
     private processedTxHashes = new Set<string>();
     private processingTxHashes = new Set<string>();
 
     constructor(private readonly proofService: ProofService) {
-        this.provider = new ethers.JsonRpcProvider(
-            process.env.SEPOLIA_RPC_URL
+        this.provider = new ethers.WebSocketProvider(
+            process.env.SEPOLIA_WS_URL!
         );
 
         this.contract = new ethers.Contract(
@@ -29,8 +29,11 @@ export class RegistryWatcherService implements OnModuleInit {
 
     async onModuleInit() {
         this.logger.log('Starting RegistryWatcher...');
-        await this.catchUpMissedEvents();
         this.startListening();
+    }
+
+    async runCatchUp() {
+        await this.catchUpMissedEvents();
     }
 
     // REAL-TIME LISTENER
@@ -38,27 +41,47 @@ export class RegistryWatcherService implements OnModuleInit {
         this.logger.log('Listening for ScoreUpdated events on Sepolia...');
 
         this.contract.on('ScoreUpdated', async (
-            user,
-            creditScore,
-            riskScore,
-            stableScore,
-            scoringVersion,
-            timestamp,
-            reportHash,
-            event
+            ...args
         ) => {
+            const event = args[args.length - 1];
+            const user = event.args?.user ?? args[0];
             const txHash = event.log.transactionHash;
-
             this.logger.log(`ScoreUpdated detected — user: ${user} tx: ${txHash}`);
-
             await this.handleTx(txHash, user);
         });
 
-        // Handle provider disconnects
-        this.provider.on('error', (error) => {
-            this.logger.error('Provider error, reconnecting...', error.message);
-            setTimeout(() => this.startListening(), 5000);
-        });
+        // ethers v6 WebSocketProvider reconnection
+        const ws = this.provider as ethers.WebSocketProvider;
+        ws.websocket.onerror = (err: any) => {
+            this.logger.warn('WebSocket closed, reconnecting in 5s...');
+            setTimeout(() => this.reconnect(), 5000);
+        };
+
+        ws.websocket.onerror = (err: any) => {
+            this.logger.error('WebSocket error:', err?.message ?? err);
+        };
+    }
+
+    private async reconnect() {
+        try {
+            // Remove old listeners before reconnecting
+            await this.contract.removeAllListeners();
+
+            this.provider = new ethers.WebSocketProvider(
+                process.env.SEPOLIA_WS_URL!
+            );
+            this.contract = new ethers.Contract(
+                process.env.CREDIT_REGISTRY_ADDRESS!,
+                REGISTRY_ABI,
+                this.provider
+            );
+            await this.catchUpMissedEvents();
+            this.startListening();
+            this.logger.log('Reconnected successfully');
+        } catch (err) {
+            this.logger.error('Reconnect failed, retrying in 5s...', err.message);
+            setTimeout(() => this.reconnect(), 5000);
+        }
     }
 
     // CATCH UP ON MISSED EVENTS (last 1000 blocks)
@@ -93,6 +116,7 @@ export class RegistryWatcherService implements OnModuleInit {
             for (const event of allEvents) {
                 const txHash = event.transactionHash;
                 const user = (event as any).args?.user;
+                console.log(`[CatchUp] event args:`, (event as any).args);
                 await this.handleTx(txHash, user);
             }
 
@@ -103,12 +127,11 @@ export class RegistryWatcherService implements OnModuleInit {
 
     // CORE HANDLER — dedup + submit + poll
     private async handleTx(txHash: string, user: string) {
-        // Dedup check
         if (
             this.processedTxHashes.has(txHash) ||
             this.processingTxHashes.has(txHash)
         ) {
-            this.logger.debug(`Skipping already processed tx: ${txHash}`);
+            this.logger.debug(`Skipping already tracked tx: ${txHash}`);
             return;
         }
 
@@ -116,13 +139,10 @@ export class RegistryWatcherService implements OnModuleInit {
         this.logger.log(`Processing tx: ${txHash} for user: ${user}`);
 
         try {
-            // Submit to proof service
-            const { jobId } = await this.proofService.processTransaction(txHash);
+            console.log(`[RegistryWatcher] Calling processTransaction with user: ${user}`);
+            const { jobId } = await this.proofService.processTransaction(txHash, user);
             this.logger.log(`Job started: ${jobId} for tx: ${txHash}`);
-
-            // Poll until done
             await this.pollUntilComplete(jobId, txHash);
-
         } catch (error) {
             this.logger.error(`Failed to process tx ${txHash}:`, error.message);
             this.processingTxHashes.delete(txHash);
@@ -157,6 +177,15 @@ export class RegistryWatcherService implements OnModuleInit {
             }
 
             if (result.status === 'failed') {
+                if (result.error?.includes('Query already processed')) {
+                    this.logger.log(
+                        ` Tx already processed on-chain, skipping: ${txHash}`
+                    );
+                    this.processedTxHashes.add(txHash);
+                    this.processingTxHashes.delete(txHash);
+                    return;
+                }
+
                 this.logger.error(
                     `Proof failed for tx: ${txHash} | error: ${result.error}`
                 );

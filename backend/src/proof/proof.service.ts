@@ -13,7 +13,12 @@ export class ProofService {
     private wallet: ethers.Wallet;
     private usc: ethers.Contract;
 
-    private jobs: Map<string, { status: string; txHash?: string; error?: string }> = new Map();
+
+    private jobs: Map<string, {
+        status: string; txHash?: string; error?: string; currentAttestedBlock?: number; targetBlock?: number; blocksRemaining?: number; estimatedWaitSeconds?: number;
+    }> = new Map();
+    private addressToJobId: Map<string, string> = new Map();
+    private processedTxHashes = new Set<string>();
 
     constructor() {
         this.provider = new ethers.JsonRpcProvider(this.creditcoinRpc);
@@ -74,14 +79,55 @@ export class ProofService {
 
             const blockNumber = tx.blockNumber;
             console.log(`[Step 2] Transaction found in block ${blockNumber}`);
+            if (this.processedTxHashes.has(txHash.toLowerCase())) {
+                throw new BadRequestException(`Transaction ${txHash} already processed (cached)`);
+            }
 
             this.jobs.set(jobId, { status: 'waiting_attestation' });
             console.log('[Step 3] Waiting for block attestation on USC...');
-            const info = new chainInfo.PrecompileChainInfoProvider(this.provider);
             console.log(`[Step 3] Waiting for Sepolia block ${blockNumber} to be attested...`);
+            const POLL_INTERVAL = 10_000;
+            const MAX_WAIT = 1_800_000; // 30 minutes
+            const started = Date.now();
 
-            await info.waitUntilHeightAttested(chainKey, blockNumber, 10000, 1800000);
-            console.log('[Step 3] Block attested.');
+            while (true) {
+                if (Date.now() - started > MAX_WAIT) {
+                    throw new InternalServerErrorException('Attestation timeout after 30 minutes');
+                }
+
+                const chainInfoResult = await this.provider.call({
+                    to: '0x0000000000000000000000000000000000000fd3',
+                    data: ethers.concat([
+                        '0x809112da',
+                        ethers.AbiCoder.defaultAbiCoder().encode(['uint64'], [chainKey])
+                    ])
+                });
+
+                // Parse attested block number from precompile response (first 32 bytes = block number)
+                const currentAttestedBlock = Number(
+                    ethers.toBigInt('0x' + chainInfoResult.slice(2, 66))
+                );
+
+                const blocksRemaining = Math.max(0, blockNumber - currentAttestedBlock);
+                const estimatedWaitSeconds = blocksRemaining * 12; // ~12s per Sepolia block
+
+                this.jobs.set(jobId, {
+                    status: 'waiting_attestation',
+                    currentAttestedBlock,
+                    targetBlock: blockNumber,
+                    blocksRemaining,
+                    estimatedWaitSeconds,
+                });
+
+                console.log(`[Step 3] Attested: ${currentAttestedBlock}, Target: ${blockNumber}, Remaining: ${blocksRemaining} blocks`);
+
+                if (currentAttestedBlock >= blockNumber) {
+                    console.log('[Step 3] Block attested.');
+                    break;
+                }
+
+                await new Promise(r => setTimeout(r, POLL_INTERVAL));
+            }
 
             this.jobs.set(jobId, { status: 'generating_proof' });
             console.log('[Step 4] Generating proof...');
@@ -120,6 +166,7 @@ export class ProofService {
             );
             const alreadyProcessed: boolean = await this.usc.processedQueries(txKey);
             if (alreadyProcessed) {
+                this.processedTxHashes.add(txHash.toLowerCase());
                 throw new BadRequestException(`Query already processed (txKey: ${txKey})`);
             }
 
@@ -148,6 +195,7 @@ export class ProofService {
             }
 
             console.log(`[Step 8] Proof successfully submitted: ${txResponse.hash}`);
+            this.processedTxHashes.add(txHash.toLowerCase());
             this.jobs.set(jobId, { status: 'success', txHash: txResponse.hash });
 
         } catch (err: any) {
@@ -157,13 +205,28 @@ export class ProofService {
         }
     }
 
-    async processTransaction(txHash: string): Promise<{ jobId: string; message: string }> {
+    async processTransaction(
+        txHash: string,
+        userAddress?: string
+    ): Promise<{ jobId: string; message: string }> {
         const jobId = `job_${txHash.slice(0, 10)}_${Date.now()}`;
         this.jobs.set(jobId, { status: 'queued' });
+
+        if (userAddress) {
+            this.addressToJobId.set(userAddress.toLowerCase(), jobId);
+            console.log(`[ProofService] Address mapped: ${userAddress.toLowerCase()} → ${jobId}`);
+        }
+
         this._processInBackground(jobId, txHash).catch(() => { });
         return {
             jobId,
             message: 'Proof processing started. Poll /proof/status/:jobId for updates.',
         };
+    }
+
+    getJobIdByAddress(address: string): string | null {
+        const jobId = this.addressToJobId.get(address.toLowerCase()) ?? null
+        console.log(`[ProofService] Address lookup: ${address.toLowerCase()} → ${jobId}`);
+        return jobId;
     }
 }

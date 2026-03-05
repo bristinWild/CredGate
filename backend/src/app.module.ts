@@ -5,8 +5,6 @@ import { WalletModule } from './wallet/wallet.module';
 import { ScoreService } from './scoring/score.service';
 import { ConfigModule } from '@nestjs/config';
 import { BlockchainModule } from './blockchain/blockchain.module';
-import { ProofService } from './proof/proof.service';
-import { ProofController } from './proof/proof.controller';
 import { DexService } from './dex/dex.service';
 import { CrossChainModule } from './crosschain/crosschain.module';
 import { DexModule } from './dex/dex.module';
@@ -20,7 +18,7 @@ import { ProofModule } from './proof/proof.module';
   imports: [ConfigModule.forRoot({
     isGlobal: true,
   }), WalletModule, BlockchainModule, CrossChainModule, DexModule, CronModule, ProofModule,],
-  controllers: [AppController, ProofController],
-  providers: [AppService, ScoreService, ProofService, DexService],
+  controllers: [AppController],
+  providers: [AppService, ScoreService, DexService],
 })
 export class AppModule { }

@@ -7,10 +7,16 @@ import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import {ERC20Pausable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 
 contract CredgateUSD is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
+
     constructor(address initialOwner)
         ERC20("credgate USD", "cdUSD")
         Ownable(initialOwner)
     {}
+
+    
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
 
     function pause() public onlyOwner {
         _pause();
@@ -23,8 +29,6 @@ contract CredgateUSD is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
     }
-
-    // The following functions are overrides required by Solidity.
 
     function _update(address from, address to, uint256 value)
         internal

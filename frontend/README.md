@@ -1,12 +1,12 @@
 # CredGate — Frontend
 
-> Next.js interface for the CredGate credit scoring and lending platform
+> Next.js interface for the CredGate credit scoring and lending platform that is powered by credgate.
 
 ---
 
 ## What this is
 
-This is the frontend for CredGate — a wallet credit scoring platform built on CreditCoin. It has two main surfaces: a **dashboard** that shows your full on-chain credit analysis, and **CredLend**, an undercollateralized lending protocol that uses that score to determine how much you can borrow without posting collateral.
+This is the frontend for CredGate — a wallet credit scoring platform built on CreditCoin. It has two main surfaces: a **dashboard** that shows your full on-chain credit analysis, and **CredLend**, an undercollateralized lending protocol that uses our own credit score model to determine how much you can borrow without posting collateral.
 
 The dashboard isn't just a number on a screen. It breaks down every signal that went into your score — your Aave lending history, stablecoin treasury behaviour, DEX maturity, cross-chain presence, and the live ZK proof status on CreditCoin. It's designed to be transparent about how creditworthiness is being evaluated, which matters if you want people to actually trust the system.
 

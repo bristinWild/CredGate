@@ -175,11 +175,10 @@ Your Lending Protocol
 
 | Tier | Score | LTV | Interest |
 |---|---|---|---|
-| `ELITE` | 95–100 | 70% | Lowest |
-| `PRIME` | 80–94 | 70% | Low |
-| `PREFERRED` | 65–79 | 60% | Standard |
-| `STANDARD` | 50–64 | 50% | Higher |
-| `HIGH_RISK` | 30–49 | 35% | High |
+| `PRIME` | ≥ 75 | 70% | Low |
+| `PREFERRED` | ≥ 60 | 60% | Standard |
+| `STANDARD` | ≥ 45 | 50% | Higher |
+| `HIGH_RISK` | ≥ 30 | 35% | High |
 | `REJECT` | < 30 | 0% | N/A |
 
 > **Note:** Loan size is also capped by capital base (stablecoin inflow × retention ratio). A high score does not guarantee a large loan — capital history matters.
@@ -423,8 +422,8 @@ All endpoints require the `x-api-key` header. Requests without a valid key retur
 | Stable | 35 | Stablecoin treasury inflow/retention/age |
 | CrossChain | 20 | Multi-chain activity maturity |
 | DEX | 15 | DEX swap history and volume |
-| Age Bonus | 10 | Wallet age (log scale) |
-| Risk Penalty | −30 | Combined risk score deduction |
+| Age Bonus | +15 | Wallet age (log scale, capped at 15pts) |
+| Risk Penalty | −30 | Risk score × 0.2, base risk starts at 35 |
 
 ---
 

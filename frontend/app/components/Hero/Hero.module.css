@@ -40,9 +40,8 @@
     font-size: 4rem;
     font-weight: 600;
     color: var(--color-neon);
-    letter-spacing: -0.02em;
-    font-family: Copperplate;
     letter-spacing: 0.5rem;
+    font-family: Copperplate;
 }
 
 .heroImage {
@@ -61,10 +60,9 @@
     }
 }
 
-/* Neon CTA Button */
+/* Neon CTA Button — no margin-top here, controlled by the flex container in JSX */
 .ctaButton {
     position: relative;
-    margin-top: 28px;
     padding: 14px 34px;
 
     font-size: 0.9rem;

@@ -56,9 +56,6 @@ export declare class CredGateClient {
         timeout?: number;
         pollInterval?: number;
     }): Promise<ProofStatus>;
-    /**
-     * Get on-chain credit registry status from Sepolia.
-     */
     getOnChainStatus(address: string): Promise<OnChainStatus>;
     /**
      * Quick eligibility check — returns false if tier is REJECT or maxLoanSizeUSD is 0.

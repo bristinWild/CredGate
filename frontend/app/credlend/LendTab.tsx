@@ -15,6 +15,7 @@ import { useDepositFlow } from "@/app/credlend/hooks/useDepositFlow";
 
 const CDUSD_DECIMALS = 6;
 const SHARES_DECIMALS = 18;
+const FILDEC = 6;
 const TARGET_CHAIN_ID = 102036;
 
 export default function LendTab() {
@@ -33,7 +34,7 @@ export default function LendTab() {
             ? parseUnits(depositAmount, CDUSD_DECIMALS)
             : 0n;
 
-    // ── Reads ────────────────────────────────────────────────────────────────
+
 
     const { data: cdUSDBalanceRaw, refetch: refetchCdUSDBalance } = useReadContract({
         address: CONTRACTS.CDUSD,
@@ -104,7 +105,7 @@ export default function LendTab() {
         query: { enabled: !!address, refetchInterval: 10000 },
     });
 
-    // ── Typed casts ──────────────────────────────────────────────────────────
+
 
     const cdUSDBalance = cdUSDBalanceRaw as bigint | undefined;
     const cvUSDCBalance = cvUSDCBalanceRaw as bigint | undefined;
@@ -116,7 +117,7 @@ export default function LendTab() {
     const previewAssets = previewAssetsRaw as bigint | undefined;
     const maxRedeemable = maxRedeemableRaw as bigint | undefined;
 
-    // ── Withdraw (wagmi is fine for single-tx) ───────────────────────────────
+
 
     const {
         writeContract: writeWithdraw,
@@ -127,7 +128,7 @@ export default function LendTab() {
     const { isLoading: withdrawConfirming, isSuccess: withdrawSuccess } =
         useWaitForTransactionReceipt({ hash: withdrawTxHash });
 
-    // ── Deposit step derived booleans ────────────────────────────────────────
+
 
     const approvePending =
         depositStep === "approving" || depositStep === "awaiting_approve";
@@ -145,7 +146,7 @@ export default function LendTab() {
         return "Deposit";
     };
 
-    // ── Network helpers ──────────────────────────────────────────────────────
+
 
     const ensureCorrectNetwork = async (): Promise<boolean> => {
         if (chainId === TARGET_CHAIN_ID) return true;
@@ -159,7 +160,7 @@ export default function LendTab() {
         }
     };
 
-    // ── Handlers ─────────────────────────────────────────────────────────────
+
 
     const handleDeposit = async () => {
         if (!address || parsedDeposit === 0n) return;
@@ -189,7 +190,7 @@ export default function LendTab() {
         });
     };
 
-    // ── Formatters ────────────────────────────────────────────────────────────
+
 
     const formatUSDC = (val: bigint | undefined): string =>
         val !== undefined
@@ -204,12 +205,12 @@ export default function LendTab() {
     const previewSharesDisplay =
         totalSupply === 0n
             ? parseFloat(depositAmount || "0")
-            : parseFloat(formatUnits(previewShares ?? 0n, SHARES_DECIMALS));
+            : parseFloat(formatUnits(previewShares ?? 0n, FILDEC));
 
     const sharePrice =
         totalSupply && totalAssets && totalSupply > 0n
             ? parseFloat(formatUnits(totalAssets, CDUSD_DECIMALS)) /
-            parseFloat(formatUnits(totalSupply, SHARES_DECIMALS))
+            parseFloat(formatUnits(totalSupply, FILDEC))
             : 1;
 
     const utilization =
@@ -225,7 +226,6 @@ export default function LendTab() {
 
     const isWrongNetwork = isConnected && chainId !== TARGET_CHAIN_ID;
 
-    // ── Not connected ─────────────────────────────────────────────────────────
 
     if (!isConnected) {
         return (
@@ -240,7 +240,6 @@ export default function LendTab() {
         );
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -10,7 +10,7 @@ import styles from "./Navbar.module.css";
 const NAV_ITEMS = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "CredLend", href: "/credlend" },
-    { label: "Docs", href: "/docs" },
+    { label: "Dev docs", href: "/docs" },
 ];
 
 function shortAddress(addr: string) {

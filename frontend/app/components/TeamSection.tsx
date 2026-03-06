@@ -4,13 +4,8 @@ import Image from "next/image";
 
 const TEAM = [
     {
-        name: "Subhasish",
-        role: "Co-founder & CEO",
-        image: "/pfp2.png",
-    },
-    {
         name: "Bristin",
-        role: "Co-founder & CPO",
+        role: "Founder",
         image: "/pfp1.png",
     },
 

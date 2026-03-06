@@ -5,7 +5,7 @@ import { useAccount, useWriteContract, useReadContract, useWaitForTransactionRec
 import { parseUnits, formatUnits } from "viem";
 import { CREDIT_VAULT_ABI, CDUSD_ABI, CONTRACTS } from "@/lib/contracts";
 
-const API = "/api";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 type ProofStatus = {
     status: string;

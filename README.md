@@ -1,6 +1,6 @@
 # CredGate
 
-> On-chain credit & identity infrastructure — score wallets, anchor proofs to CreditCoin, lend without collateral
+> On-chain Credit & identity infrastructure — score wallets, anchor proofs to CreditCoin, lend without collateral
 
 ---
 
@@ -143,21 +143,21 @@ See [`frontend/README.md`](./frontend/README.md) for component map, card-to-API 
 | Stablecoin treasury | 35 pts | Transfer graphs — net flow, retention, holding duration, source diversity |
 | Cross-chain activity | 20 pts | Multi-chain RPCs + bridges |
 | DEX maturity | 15 pts | Trading behaviour, router vs genuine trader detection |
-| Age bonus | +10 pts | Log-scale wallet age |
-| Risk penalty | up to −30 pts | Liquidations, burst activity, concentration risk |
+| Age bonus | +15 pts | Log-scale wallet age (`log(ageDays+1) * 2.5`, capped at 15pts) |
+| Risk penalty | up to −30 pts | Risk score × 0.2 (base risk starts at 35 before additions) |
 
 **Tiers:**
 
 | Score | Tier | Max Borrow | Interest |
 |-------|------|-----------|----------|
 | 95–100 | ELITE | $1,000 cdUSD | Prime |
-| 80–94 | PRIME | $1,000 cdUSD | Prime |
-| 65–79 | PREFERRED | $500 cdUSD | Preferred |
-| 50–64 | STANDARD | $200 cdUSD | Standard |
-| 30–49 | HIGH_RISK | Reduced | High |
+| 75–94 | PRIME | $1,000 cdUSD | Prime |
+| 60–74 | PREFERRED | $500 cdUSD | Preferred |
+| 45–59 | STANDARD | $200 cdUSD | Standard |
+| 30–44 | HIGH_RISK | Reduced | High |
 | < 30 | REJECT | None | — |
 
-Credit line thresholds (from `CreditVault.sol`): score ≥ 75 → $1,000, score ≥ 60 → $500, score ≥ 45 → $200.
+Credit line thresholds (from `buildLoanProfile` in `wallet.processor.ts`): score ≥ 75 → 70% LTV, score ≥ 60 → 60% LTV, score ≥ 45 → 50% LTV, score ≥ 30 → 35% LTV.
 
 ---
 

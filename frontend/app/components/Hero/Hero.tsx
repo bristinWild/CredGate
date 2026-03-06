@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import styles from "./Hero.module.css";
 
 export default function Hero() {
@@ -11,19 +12,32 @@ export default function Hero() {
                     <div>
                         <h1 className={styles.heroTitle}>CredGate</h1>
 
-                        <p className="mt-4 text-sm text-[var(--color-muted)] max-w-xl leading-relaxed " style={{
-                            fontFamily:
-                                "Georgia, 'Times New Roman', Times, serif",
-                            letterSpacing: "0.1rem",
+                        <p className="mt-6 max-w-lg" style={{
+                            fontFamily: "'Inter', 'DM Sans', system-ui, sans-serif",
+                            fontSize: "1.05rem",
+                            fontWeight: 600,
+                            lineHeight: "1.85",
+                            letterSpacing: "0.02em",
+                            color: "rgba(255,255,255,0.55)",
                         }}>
-                            CredGate replaces over-collateralization with verifiable on-chain
-                            reputation, using AI agents and Credion to generate a dynamic,
-                            cross-chain credit score.
+                            The financial system is being rewritten on-chain. CredGate is the credit layer — turning wallet history into a verified identity that any protocol on any chain can trust.
                         </p>
 
-                        <button className={styles.ctaButton}>
-                            Check Credit Score
-                        </button>
+                        <div className="flex flex-row items-center gap-6 mt-8">
+                            <Link href="/dashboard">
+                                <button className={styles.ctaButton}>
+                                    Check Credit Score
+                                </button>
+                            </Link>
+
+                            <Link
+                                href="/docs"
+                                className="flex items-center gap-1 text-sm text-white/40 hover:text-[#4ef2e8] transition-colors"
+                                style={{ letterSpacing: "0.04rem", whiteSpace: "nowrap" }}
+                            >
+                                Read the docs <span style={{ fontSize: "16px", lineHeight: 1 }}>→</span>
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="relative">
@@ -38,6 +52,6 @@ export default function Hero() {
                     </div>
                 </div>
             </div>
-        </section >
+        </section>
     );
 }

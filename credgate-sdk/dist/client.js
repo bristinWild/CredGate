@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CredGateClient = void 0;
 const types_1 = require("./types");
-// ── helpers ───────────────────────────────────────────────────────────────────
+// helpers
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function deriveTier(score) {
     if (score >= 95)
@@ -15,7 +15,6 @@ function deriveTier(score) {
         return "STANDARD";
     return "REJECT";
 }
-// ── CredGateClient ────────────────────────────────────────────────────────────
 class CredGateClient {
     constructor(config) {
         this.apiUrl = config.apiUrl.replace(/\/$/, "");
@@ -23,7 +22,6 @@ class CredGateClient {
         this.defaultPollInterval = config.pollInterval ?? 3000;
         this.defaultTimeout = config.timeout ?? 120000;
     }
-    // ── Internal fetch ────────────────────────────────────────────────────────
     async _fetch(path, options) {
         const headers = {
             "Content-Type": "application/json",
@@ -51,7 +49,6 @@ class CredGateClient {
         }
         return res.json();
     }
-    // ── Normalize /wallet/result/:address response ────────────────────────────
     // Backend returns: { status: "DONE", result: { address, intelligence, onchain, meta, ... } }
     _normalizeResult(raw) {
         // result is nested under `result` key when status === "DONE"
@@ -92,9 +89,7 @@ class CredGateClient {
         };
         return { score, onchain };
     }
-    // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC API
-    // ─────────────────────────────────────────────────────────────────────────
     /**
      * Trigger a full wallet analysis and poll until score is ready.
      *
@@ -112,9 +107,9 @@ class CredGateClient {
         const pollInterval = options.pollInterval ?? this.defaultPollInterval;
         const timeout = options.timeout ?? this.defaultTimeout;
         const deadline = Date.now() + timeout;
-        // 1. Trigger analysis
+        // Trigger analysis
         await this._fetch(`/wallet/analyze/${address}`, { method: "POST" });
-        // 2. Poll for DONE
+        // Poll for DONE
         let raw = null;
         while (Date.now() < deadline) {
             try {
@@ -138,11 +133,11 @@ class CredGateClient {
             throw new types_1.CredGateError(types_1.ErrorCode.ANALYSIS_TIMEOUT, `Analysis timed out after ${timeout / 1000}s for ${address}`);
         }
         const { score, onchain } = this._normalizeResult(raw);
-        // 3. Handle cooldown
+        // Handle cooldown
         if (onchain.status === "COOLDOWN_ACTIVE") {
             throw new types_1.CredGateError(types_1.ErrorCode.COOLDOWN_ACTIVE, `Wallet is in cooldown. Retry in ${onchain.remainingSeconds ?? "?"}s`, { remainingSeconds: onchain.remainingSeconds });
         }
-        // 4. Optionally wait for ZK proof
+        // Optionally wait for ZK proof
         let proof;
         if (options.waitForProof) {
             proof = await this.waitForProof(address, { timeout: Math.max(0, deadline - Date.now()) });
@@ -212,9 +207,6 @@ class CredGateClient {
         }
         throw new types_1.CredGateError(types_1.ErrorCode.ANALYSIS_TIMEOUT, `Proof timed out after ${timeout / 1000}s`);
     }
-    /**
-     * Get on-chain credit registry status from Sepolia.
-     */
     async getOnChainStatus(address) {
         const raw = await this._fetch(`/wallet/onchain/${address}`);
         return {

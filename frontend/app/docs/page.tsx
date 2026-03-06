@@ -21,15 +21,67 @@ const SECTIONS = [
 ];
 
 function highlightCode(code: string): string {
-    return code
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/(\/\/[^\n]*)/g, '<span style="color:rgba(255,255,255,0.28)">$1</span>')
-        .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, '<span style="color:#a5f3fc">$1</span>')
+    // HTML escape first
+    let out = code
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    // Remove inline style-like comment annotations entirely.
+    // These are the // comment lines that contain style="color:..." artifacts.
+    // We strip them and replace with a clean dim span containing only the text after //
+    // Strategy: tokenize line by line, handle strings before comments on each line.
+
+    const lines = out.split("\n");
+    const result = lines.map(line => {
+        // Find first // that is not inside a string on this line
+        let inStr: string | null = null;
+        let commentIdx = -1;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (inStr) {
+                if (ch === inStr && line[i - 1] !== "\\") inStr = null;
+            } else if (ch === "\`" || ch === "'" || ch === "\"") {
+                inStr = ch;
+            } else if (ch === "/" && line[i + 1] === "/") {
+                commentIdx = i;
+                break;
+            }
+        }
+
+        if (commentIdx === -1) {
+            // No comment — highlight the whole line normally
+            return highlightTokens(line);
+        }
+
+        const codePart = line.slice(0, commentIdx);
+        const commentPart = line.slice(commentIdx);
+        // Strip any style="..." from the comment text to prevent color leaking
+        const safeComment = commentPart.replace(/style="[^"]*"/g, "");
+        return highlightTokens(codePart) + `<span style="color:rgba(255,255,255,0.38)">${safeComment}</span>`;
+    });
+
+    return result.join("\n");
+}
+
+function highlightTokens(code: string): string {
+    // Stash string literals so regexes below don't touch their content
+    const stash: string[] = [];
+    let out = code.replace(/(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, (m) => {
+        stash.push(`<span style="color:#a5f3fc">${m}</span>`);
+        return "\x00S" + (stash.length - 1) + "\x00";
+    });
+
+    out = out
         .replace(/\b(import|export|from|const|let|var|async|await|return|new|if|else|throw|try|catch|type|interface|extends|default|function|class|switch|case|break)\b/g, '<span style="color:#c084fc">$1</span>')
         .replace(/\b(true|false|null|undefined)\b/g, '<span style="color:#fcd34d">$1</span>')
         .replace(/\b(\d+(?:_\d+)*)\b/g, '<span style="color:#fbbf24">$1</span>')
         .replace(/\b([A-Z][a-zA-Z0-9_]*)\b/g, '<span style="color:#4ef2e8">$1</span>')
         .replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, '<span style="color:#7dd3fc">$1</span>');
+
+    // Restore strings
+    out = out.replace(/\x00S(\d+)\x00/g, (_: string, i: string) => stash[+i]);
+    return out;
 }
 
 function CodeBlock({ code, lang = "typescript", filename }: { code: string; lang?: string; filename?: string }) {
@@ -143,7 +195,7 @@ export default function DocsPage() {
                     ))}
                     <div style={{ marginTop: "32px", marginRight: "16px", padding: "10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
                         <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginBottom: "4px" }}>VERSION</p>
-                        <p style={{ fontSize: "13px", color: "#4ef2e8", fontFamily: "monospace", fontWeight: 700 }}>1.0.4</p>
+                        <p style={{ fontSize: "13px", color: "#4ef2e8", fontFamily: "monospace", fontWeight: 700 }}>1.0.0</p>
                         <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginTop: "4px" }}>credgate-sdk</p>
                     </div>
                 </aside>
@@ -439,7 +491,10 @@ const poller = setInterval(async () => {
 
                     {/* ── ONCHAIN ── */}
                     <SH id="onchain">On-chain Status</SH>
-                    <P>Your score is stored on Sepolia via <IC>CreditScoreRegistry.sol</IC>. This is separate from the CreditCoin ZK proof:</P>
+                    <Note color="#f59e0b" icon="🔗">
+                        <strong style={{ color: "#f59e0b" }}>Contract deployment:</strong> Only <IC>CreditScoreRegistry.sol</IC> is on Sepolia. All other contracts (<IC>CreditScoreUSC</IC>, <IC>CreditAggregator</IC>, <IC>CreditVault</IC>) are deployed on <IC>CreditCoin USC Testnet</IC> — chain ID <IC>102036</IC>, RPC <IC>https://rpc.usc-testnet2.creditcoin.network</IC>.
+                    </Note>
+                    <P>The <IC>getOnChainStatus()</IC> call reflects the Sepolia <IC>CreditScoreRegistry</IC> state. The ZK proof (tracked separately) finalises the score on CreditCoin USC.</P>
                     <CodeBlock code={`const status = await client.getOnChainStatus("0x...");
 
 // "UPDATED"         = score stored on Sepolia CreditScoreRegistry ✓
@@ -671,11 +726,10 @@ try {
                             {["Tier", "Score", "LTV", "Interest", "Notes"].map(h => <span key={h} style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase" as const }}>{h}</span>)}
                         </div>
                         {[
-                            ["ELITE", "#4ef2e8", "95–100", "70%", "Lowest", "Highest trust — full credit line"],
-                            ["PRIME", "#7dd3fc", "80–94", "70%", "Low", "Strong history (like the test wallet above)"],
-                            ["PREFERRED", "#a78bfa", "65–79", "60%", "Standard", "Solid on-chain track record"],
-                            ["STANDARD", "#f59e0b", "50–64", "50%", "Higher", "Limited history or moderate risk"],
-                            ["HIGH_RISK", "#fb923c", "30–49", "35%", "High", "Poor metrics — small credit line"],
+                            ["PRIME", "#4ef2e8", "≥ 75", "70%", "Low", "Strong history (like the test wallet above at 89)"],
+                            ["PREFERRED", "#a78bfa", "≥ 60", "60%", "Standard", "Solid on-chain track record"],
+                            ["STANDARD", "#f59e0b", "≥ 45", "50%", "Higher", "Limited history or moderate risk"],
+                            ["HIGH_RISK", "#fb923c", "≥ 30", "35%", "High", "Poor metrics — small credit line"],
                             ["REJECT", "#f87171", "< 30", "0%", "N/A", "No credit line issued"],
                         ].map(([tier, color, score, ltv, interest, note]) => (
                             <div key={tier} style={{ display: "grid", gridTemplateColumns: "110px 80px 55px 110px 1fr", gap: "12px", padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
@@ -703,7 +757,7 @@ try {
                             { status: "fetching_tx", color: "#a78bfa", desc: "Fetching the Sepolia tx from RPC" },
                             { status: "waiting_attestation", color: "#f59e0b", desc: "Polling 0xFD3 precompile — waiting for Sepolia block to be attested on CreditCoin (10–30 min, blocksRemaining available)" },
                             { status: "generating_proof", color: "#4ef2e8", desc: "Calling proof-gen API to build the ZK Merkle proof" },
-                            { status: "submitting", color: "#818cf8", desc: "Calling CreditScoreUSC.submitScoreFromQuery() on CreditCoin USC" },
+                            { status: "submitting", color: "#818cf8", desc: "Calling CreditScoreUSC.submitScoreFromQuery() on CreditCoin USC Testnet (chain ID 102036)" },
                             { status: "success", color: "#4ade80", desc: "Score verified and stored in CreditAggregator ✓ — txHash available" },
                             { status: "failed", color: "#f87171", desc: "Proof submission failed — re-analyze to retry" },
                         ].map(item => (
@@ -721,7 +775,7 @@ try {
 
                     {/* Footer */}
                     <div style={{ marginTop: "64px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>credgate-sdk v1.0.4 · MIT License</span>
+                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>credgate-sdk v1.0.0 · MIT License</span>
                         <div style={{ display: "flex", gap: "16px" }}>
                             <a href="https://www.npmjs.com/package/credgate-sdk" target="_blank" rel="noreferrer"
                                 style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>npm ↗</a>

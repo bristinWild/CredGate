@@ -16,7 +16,7 @@ export class RegistryWatcherService implements OnModuleInit, OnModuleDestroy {
     private processingTxHashes = new Set<string>();
     private lastScannedBlock: number | null = null;
     private pollTimer: NodeJS.Timeout | null = null;
-    private readonly POLL_INTERVAL = 12_000;
+    private readonly POLL_INTERVAL = 12_000; // ~1 Sepolia block
 
     constructor(private readonly proofService: ProofService) {
         this.provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
@@ -31,6 +31,7 @@ export class RegistryWatcherService implements OnModuleInit, OnModuleDestroy {
         this.logger.log('Starting RegistryWatcher...');
         this.logger.log('Listening for ScoreUpdated events on Sepolia...');
 
+        // Start from a few blocks back to catch any missed events on boot
         try {
             const current = await this.provider.getBlockNumber();
             this.lastScannedBlock = Math.max(0, current - 10);
@@ -58,14 +59,14 @@ export class RegistryWatcherService implements OnModuleInit, OnModuleDestroy {
             }
 
             if (currentBlock <= this.lastScannedBlock) {
-                return;
+                return; // no new blocks
             }
 
             const fromBlock = this.lastScannedBlock + 1;
             const toBlock = currentBlock;
 
-
-            const CHUNK = 50;
+            // Query in chunks of 50 blocks to avoid RPC limits
+            const CHUNK = 9;
             for (let start = fromBlock; start <= toBlock; start += CHUNK) {
                 const end = Math.min(start + CHUNK - 1, toBlock);
                 try {
@@ -100,7 +101,7 @@ export class RegistryWatcherService implements OnModuleInit, OnModuleDestroy {
             this.logger.log('Catching up on missed events...');
             const currentBlock = await this.provider.getBlockNumber();
             const fromBlock = Math.max(0, currentBlock - 1000);
-            const CHUNK_SIZE = 50;
+            const CHUNK_SIZE = 9;
 
             for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
                 const end = Math.min(start + CHUNK_SIZE - 1, currentBlock);

@@ -290,11 +290,11 @@ The point is: once a proof lives on CreditCoin, it's not our data anymore. It's 
 
 | Contract | Chain | Address |
 |----------|-------|---------|
-| CreditScoreRegistry | Sepolia | `0x...` |
+| CreditScoreRegistry | Sepolia | `0x47d3adBB126AB13E1b6a4f76D13927E16bA14817` |
 | CredgateUSD (cdUSD) | Sepolia | `0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC` |
 | CreditVault | Sepolia | `0x6f02C7BFd93050F014515FF407599dc8E651A17e` |
 | CreditAggregator | CreditCoin USC | `0x04F3aBf34A59AB5e3F1555b678D256Fe8DfF9059` |
-| CreditScoreUSC | CreditCoin USC | `0x...` |
+| CreditScoreUSC | CreditCoin USC | `0x620431B91db7a499eeC0eC9a4c817dA3B5A90861` |
 
 CreditCoin USC Testnet chain ID: `102036`
 Explorer: `https://explorer.usc-testnet2.creditcoin.network`
@@ -315,7 +315,6 @@ It wraps all the polling and error handling so you don't have to. See the SDK do
 
 ## Notes / Known Issues
 
-- `RegistryWatcherService` is commented out in `main.ts` by default. You need to uncomment it for automatic proof generation to work after scoring.
 - The proof pipeline stores jobs in memory — if the server restarts mid-proof, jobs are lost. A proper implementation would persist job state to a database. For testnet this is fine.
 - `updateCooldown` in `CreditScoreRegistry.sol` is set to 5 minutes. This is intentionally short for testing — in production you'd want 24 hours minimum.
 - The stablecoin treasury service currently tracks USDC, USDT, and DAI. More tokens can be added in the stablecoin-treasury service config.

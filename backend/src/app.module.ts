@@ -10,6 +10,9 @@ import { CrossChainModule } from './crosschain/crosschain.module';
 import { DexModule } from './dex/dex.module';
 import { CronModule } from './cron/cron.module';
 import { ProofModule } from './proof/proof.module';
+// import { ApiKeyService } from './api-key/api-key.service';
+// import { ApiKeyController } from './api-key/api-key.controller';
+import { ApiKeyModule } from './api-key/api-key.module';
 
 
 
@@ -17,8 +20,8 @@ import { ProofModule } from './proof/proof.module';
 @Module({
   imports: [ConfigModule.forRoot({
     isGlobal: true,
-  }), WalletModule, BlockchainModule, CrossChainModule, DexModule, CronModule, ProofModule,],
-  controllers: [AppController],
-  providers: [AppService, ScoreService, DexService],
+  }), WalletModule, BlockchainModule, CrossChainModule, DexModule, CronModule, ProofModule, ApiKeyModule,],
+  controllers: [AppController,],
+  providers: [AppService, ScoreService, DexService,],
 })
 export class AppModule { }

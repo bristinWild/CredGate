@@ -1,7 +1,7 @@
-// Core
+
 export { CredGateClient } from "./client";
 
-// Types
+
 export type {
     CredGateConfig,
     AnalyzeOptions,
@@ -18,5 +18,5 @@ export type {
     StableLevel,
 } from "./types";
 
-// Errors
+
 export { CredGateError, ErrorCode } from "./types";

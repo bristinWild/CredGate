@@ -11,7 +11,6 @@ const NAV_ITEMS = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "CredLend", href: "/credlend" },
     { label: "Docs", href: "/docs" },
-
 ];
 
 function shortAddress(addr: string) {
@@ -27,7 +26,6 @@ function WalletButton() {
     if (isConnected && address) {
         return (
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-
                 <div style={{
                     display: "flex", alignItems: "center", gap: "8px",
                     padding: "8px 16px", borderRadius: "999px",
@@ -48,7 +46,6 @@ function WalletButton() {
                         {ensName ?? shortAddress(address)}
                     </span>
                 </div>
-
 
                 <button
                     onClick={() => disconnect()}
@@ -109,7 +106,7 @@ export default function Navbar() {
             </Link>
 
             {/* Nav */}
-            <nav className="hidden md:flex gap-12 text-sm">
+            <nav className="hidden md:flex items-center gap-12 text-sm">
                 {NAV_ITEMS.map((item) => {
                     const isActive = pathname.startsWith(item.href);
                     return (
@@ -126,6 +123,63 @@ export default function Navbar() {
                         </Link>
                     );
                 })}
+
+                {/* API Key — standalone styled pill */}
+                <Link
+                    href="/keys"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "7px 14px",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(78,242,232,0.3)",
+                        background: pathname.startsWith("/get-api-key")
+                            ? "rgba(78,242,232,0.12)"
+                            : "rgba(78,242,232,0.06)",
+                        color: "#4ef2e8",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        letterSpacing: "0.01em",
+                        textDecoration: "none",
+                        transition: "all 0.2s ease",
+                        boxShadow: pathname.startsWith("/get-api-key")
+                            ? "0 0 16px rgba(78,242,232,0.15)"
+                            : "none",
+                        position: "relative",
+                        overflow: "hidden",
+                    }}
+                    onMouseEnter={e => {
+                        const el = e.currentTarget as HTMLAnchorElement;
+                        el.style.background = "rgba(78,242,232,0.12)";
+                        el.style.borderColor = "rgba(78,242,232,0.5)";
+                        el.style.boxShadow = "0 0 16px rgba(78,242,232,0.15)";
+                    }}
+                    onMouseLeave={e => {
+                        const el = e.currentTarget as HTMLAnchorElement;
+                        if (!pathname.startsWith("/get-api-key")) {
+                            el.style.background = "rgba(78,242,232,0.06)";
+                            el.style.borderColor = "rgba(78,242,232,0.3)";
+                            el.style.boxShadow = "none";
+                        }
+                    }}
+                >
+                    {/* tiny key icon */}
+                    {/* <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="7.5" cy="15.5" r="5.5" />
+                        <path d="M21 2l-9.6 9.6" />
+                        <path d="M15.5 7.5l3 3" />
+                    </svg> */}
+                    Get API Key
+                    {/* subtle shimmer on hover via pseudo — done with a child div */}
+                    <span style={{
+                        position: "absolute", inset: 0,
+                        background: "linear-gradient(105deg, transparent 40%, rgba(78,242,232,0.08) 50%, transparent 60%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 2.5s infinite",
+                    }} />
+                    <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
+                </Link>
             </nav>
 
             <WalletButton />

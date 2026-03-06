@@ -143,7 +143,7 @@ export default function DocsPage() {
                     ))}
                     <div style={{ marginTop: "32px", marginRight: "16px", padding: "10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
                         <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginBottom: "4px" }}>VERSION</p>
-                        <p style={{ fontSize: "13px", color: "#4ef2e8", fontFamily: "monospace", fontWeight: 700 }}>1.0.2</p>
+                        <p style={{ fontSize: "13px", color: "#4ef2e8", fontFamily: "monospace", fontWeight: 700 }}>1.0.4</p>
                         <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginTop: "4px" }}>credgate-sdk</p>
                     </div>
                 </aside>
@@ -721,7 +721,7 @@ try {
 
                     {/* Footer */}
                     <div style={{ marginTop: "64px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>credgate-sdk v1.0.2 · MIT License</span>
+                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>credgate-sdk v1.0.4 · MIT License</span>
                         <div style={{ display: "flex", gap: "16px" }}>
                             <a href="https://www.npmjs.com/package/credgate-sdk" target="_blank" rel="noreferrer"
                                 style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>npm ↗</a>

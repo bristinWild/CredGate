@@ -1,9 +1,8 @@
 "use strict";
+// Credit Tiers  (matches wallet.processor.ts buildLoanProfile)
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CredGateError = exports.ErrorCode = void 0;
-// ─────────────────────────────────────────────────────────────────────────────
 // Error handling
-// ─────────────────────────────────────────────────────────────────────────────
 var ErrorCode;
 (function (ErrorCode) {
     ErrorCode["COOLDOWN_ACTIVE"] = "COOLDOWN_ACTIVE";

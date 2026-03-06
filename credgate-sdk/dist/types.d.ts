@@ -58,19 +58,14 @@ export interface CreditLineResult {
     utilizationPct: number;
 }
 export interface CredGateConfig {
-    /** Your CredGate backend URL, e.g. https://api.credgate.xyz */
     apiUrl: string;
-    /** Optional API key forwarded as x-api-key header */
     apiKey?: string;
-    /** Poll interval in ms (default: 3000) */
     pollInterval?: number;
-    /** Analysis timeout in ms (default: 120000) */
     timeout?: number;
 }
 export interface AnalyzeOptions {
     pollInterval?: number;
     timeout?: number;
-    /** If true, also waits for CreditCoin ZK proof to reach success/failed */
     waitForProof?: boolean;
 }
 export declare enum ErrorCode {

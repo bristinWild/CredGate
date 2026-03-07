@@ -148,13 +148,35 @@ export default function BorrowTab() {
 
     useEffect(() => {
         if (!address) return;
+
+        // Try localStorage first for instant load
         const cached = localStorage.getItem(`credgate_score_${address.toLowerCase()}`);
         if (cached) {
             try {
                 setScoreData(JSON.parse(cached));
                 pollProofStatus(address);
+                return;
             } catch { }
         }
+
+        // Fall back to backend cache (e.g. analyzed on dashboard)
+        fetch(`/api/wallet/result/${address}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === "DONE" && data.result?.intelligence) {
+                    const intelligence = data.result.intelligence;
+                    const scorePayload = {
+                        score: intelligence.creditScore ?? 0,
+                        tier: intelligence.loanProfile?.interestTier ?? "REJECT",
+                        maxLoanSizeUSD: intelligence.loanProfile?.maxLoanSizeUSD ?? 0,
+                        breakdown: intelligence.scoreBreakdown,
+                    };
+                    setScoreData(scorePayload);
+                    localStorage.setItem(`credgate_score_${address.toLowerCase()}`, JSON.stringify(scorePayload));
+                    pollProofStatus(address);
+                }
+            })
+            .catch(() => { });
     }, [address]);
 
 

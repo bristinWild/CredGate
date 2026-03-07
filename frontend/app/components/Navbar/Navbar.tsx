@@ -116,7 +116,7 @@ export default function Navbar() {
                             className={`relative transition
                                 ${isActive ? "text-white" : "text-[var(--color-muted)]"}
                                 after:absolute after:left-0 after:-bottom-2 after:h-[1px]
-                                after:bg-[var(--color-neon)] after:transition-all
+                                after:bg-[var(--color-neon)] after:transition-all fontWeight: 1900
                                 ${isActive ? "after:w-full" : "after:w-0 hover:after:w-full"}`}
                         >
                             {item.label}

@@ -85,9 +85,8 @@ export default function Footer() {
                 {/* Social + copyright */}
                 <div className="flex flex-col gap-4 md:items-end">
                     <div className="flex gap-4 text-lg">
-                        <a className="text-white/50 hover:text-[#4EF2E8] transition-colors" href="#">𝕏</a>
-                        <a className="text-white/50 hover:text-[#4EF2E8] transition-colors" href="#">GitHub</a>
-                        <a className="text-white/50 hover:text-[#4EF2E8] transition-colors" href="#">Discord</a>
+                        <a className="text-white/50 hover:text-[#4EF2E8] transition-colors" href="https://x.com/CredgateCTC">𝕏</a>
+                        <a className="text-white/50 hover:text-[#4EF2E8] transition-colors" href="https://github.com/bristinWild/CredGate">GitHub</a>
                     </div>
 
                     <p className="text-xs text-white/40">

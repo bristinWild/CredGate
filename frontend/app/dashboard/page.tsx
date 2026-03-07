@@ -13,7 +13,7 @@ import LoanDecisionCard from "@/app/dashboard/components/LoanDecisionCard/LoanDe
 import OnChainStatusCard from "@/app/dashboard/components/OnChainStatusCard/Onchainstatuscard";
 import { useAccount } from "wagmi";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+
 
 type AnalysisStatus = "IDLE" | "PROCESSING" | "DONE" | "ERROR";
 
@@ -53,7 +53,7 @@ interface WalletResult {
     onchain: { status: string; txHash: string; reportHash: string; remainingSeconds: number };
 }
 
-// ── useWalletAnalysis ─────────────────────────────────────────────────────────
+//useWalletAnalysis 
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 const POLL_INTERVAL = 3000;
@@ -65,9 +65,11 @@ function useWalletAnalysis() {
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
 
+
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const startedAt = useRef<number>(0);
+
 
     const clearTimers = useCallback(() => {
         if (pollRef.current) clearInterval(pollRef.current);
@@ -84,7 +86,11 @@ function useWalletAnalysis() {
         setProgress(0);
     }, [clearTimers]);
 
+
+
     useEffect(() => () => clearTimers(), [clearTimers]);
+
+
 
     const pollResult = useCallback(async (address: string) => {
         try {
@@ -140,11 +146,34 @@ function useWalletAnalysis() {
             setStatus("ERROR");
         }
     }, [clearTimers, pollResult]);
+    const checkExisting = useCallback(async (address: string) => {
+        if (!address.trim()) return;
+        setStatus("PROCESSING");
+        setProgress(50);
+        try {
+            const res = await fetch(`${API_BASE}/wallet/result/${address}`);
+            if (!res.ok) throw new Error("No cached result");
+            const json = await res.json();
+            if (json.status === "DONE" && json.result) {
+                setData(json.result as WalletResult);
+                setStatus("DONE");
+                setProgress(100);
+            } else {
+                // No cached result, go back to idle
+                setStatus("IDLE");
+                setProgress(0);
+            }
+        } catch {
+            setStatus("IDLE");
+            setProgress(0);
+        }
+    }, []);
 
-    return { status, data, error, progress, analyze, reset };
+    return { status, data, error, progress, analyze, reset, checkExisting };
+
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+//  Helpers
 
 function walletAgeDays(blocks: number) {
     return Math.round((blocks / 7200) * 100) / 100;
@@ -156,7 +185,7 @@ function isValidAddress(addr: string) {
     return /^0x[0-9a-fA-F]{40}$/.test(addr.trim());
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
+// Skeleton
 
 function SkeletonCard({ height = 200 }: { height?: number }) {
     return (
@@ -198,7 +227,7 @@ function LoadingSkeleton({ progress, message }: { progress: number; message: str
     );
 }
 
-// ── NoWalletHero ──────────────────────────────────────────────────────────────
+//  NoWalletHero
 
 function NoWalletHero() {
     return (
@@ -216,7 +245,7 @@ function NoWalletHero() {
     );
 }
 
-// ── AnalyseCTA ────────────────────────────────────────────────────────────────
+//  AnalyseCTA 
 
 function AnalyseCTA({ address, onAnalyse }: { address: string; onAnalyse: () => void }) {
     const C = 2 * Math.PI * 58;
@@ -273,7 +302,7 @@ function AnalyseCTA({ address, onAnalyse }: { address: string; onAnalyse: () => 
     );
 }
 
-// ── RefreshScoreBar ───────────────────────────────────────────────────────────
+//RefreshScoreBar 
 
 function RefreshScoreBar({ address, onRecheck, cooldownRemaining }: { address: string; onRecheck: () => void; cooldownRemaining: number }) {
     const [timeLeft, setTimeLeft] = useState(cooldownRemaining);
@@ -316,7 +345,7 @@ function RefreshScoreBar({ address, onRecheck, cooldownRemaining }: { address: s
     );
 }
 
-// ── DevBar (DEV only — hidden in production) ──────────────────────────────────
+// DevBar (DEV only — hidden in production)
 
 function DevBar({ devAddress, setDevAddress, onAnalyse, onClear }: {
     devAddress: string;
@@ -389,34 +418,33 @@ function DevBar({ devAddress, setDevAddress, onAnalyse, onClear }: {
     );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
 export default function DashboardPage() {
-    // ── Connected wallet (primary flow) ──────────────────────────────────────
+
     const { address: connectedAddress } = useAccount();
 
-    // ── Dev override address (secondary / demo flow) ──────────────────────────
-    // Only active in development. Typing a valid address here overrides the
-    // connected wallet for analysis purposes. Clearing it reverts to the
-    // connected wallet flow.
+
     const [devAddress, setDevAddress] = useState<string>("");
     const isDev = process.env.NODE_ENV === "development";
 
-    // The address actually used for analysis:
-    // - In production: always connectedAddress
-    // - In development: devAddress (if valid) OR connectedAddress as fallback
+
     const activeAddress: string | undefined =
         isDev && isValidAddress(devAddress)
             ? devAddress.trim()
             : connectedAddress;
 
-    // ── Analysis hook ─────────────────────────────────────────────────────────
-    const { status, data, error, progress, analyze, reset } = useWalletAnalysis();
+    //Analysis hook 
+    const { status, data, error, progress, analyze, reset, checkExisting } = useWalletAnalysis();
 
     // Reset analysis when the active address disappears
     useEffect(() => {
         if (!activeAddress) reset();
     }, [activeAddress, reset]);
+
+    useEffect(() => {
+        if (activeAddress && status === "IDLE") {
+            checkExisting(activeAddress);
+        }
+    }, [activeAddress]);
 
     // Also reset if connected wallet disconnects (production safety)
     useEffect(() => {
@@ -426,7 +454,7 @@ export default function DashboardPage() {
     const ethPrice = 2800;
     const cooldownRemaining = data?.onchain?.remainingSeconds ?? 0;
 
-    // ── Handlers ──────────────────────────────────────────────────────────────
+    // Handlers
 
     // Primary: connected wallet
     const handleAnalyse = () => {
@@ -466,7 +494,7 @@ export default function DashboardPage() {
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             <Navbar />
 
-            {/* ── DEV BAR: only visible in development ── */}
+            {/*  DEV BAR: only visible in development  */}
             {isDev && (
                 <DevBar
                     devAddress={devAddress}
@@ -478,15 +506,15 @@ export default function DashboardPage() {
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
-                {/* ── State 1: No wallet connected AND no dev address ── */}
+                {/* State 1: No wallet connected AND no dev address  */}
                 {!activeAddress && <NoWalletHero />}
 
-                {/* ── State 2: Have address but haven't analysed yet ── */}
+                {/*  State 2: Have address but haven't analysed yet  */}
                 {activeAddress && status === "IDLE" && (
                     <AnalyseCTA address={activeAddress} onAnalyse={handleAnalyse} />
                 )}
 
-                {/* ── State 3: Analysis in progress ── */}
+                {/*  State 3: Analysis in progress */}
                 {activeAddress && status === "PROCESSING" && (
                     <LoadingSkeleton
                         progress={progress}
@@ -511,7 +539,7 @@ export default function DashboardPage() {
                     </div>
                 )}
 
-                {/* ── State 5: Done — render dashboard ── */}
+                {/*  State 5: Done — render dashboard  */}
                 {activeAddress && status === "DONE" && data && (() => {
                     const { basic, intelligence } = data;
                     const ageDays = walletAgeDays(basic.walletAgeBlocks);

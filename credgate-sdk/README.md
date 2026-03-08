@@ -1,11 +1,11 @@
 # credgate-sdk
 
-On-chain credit scoring for onchain protocols, powered by CreditCoin ZK proofs.
+On-chain credit scoring for onchain protocols, powered by CreditCoin Merkle proofs.
 
 Any onchain protocol can use this SDK to:
 - Analyze a wallet's on-chain credit score
 - Determine max loan size and interest tier
-- Poll CreditCoin ZK proof status
+- Poll CreditCoin Merkle proof status
 - Gate loan disbursement by credit tier
 
 > **API key required.** Generate yours free at [credgate.vercel.app/keys](https://credgate.vercel.app/keys) — connect your wallet and get a key in seconds.
@@ -159,7 +159,7 @@ Your Lending Protocol
         ▼
   CreditScoreRegistry (Sepolia)
         │
-        ▼ ZK Proof via CreditCoin SDK
+        ▼ Merkle Proof via CreditCoin SDK
   CreditScoreUSC (CreditCoin USC Testnet)
         │
         ▼
@@ -235,7 +235,7 @@ Triggers analysis and polls until score is ready. Returns full `AnalysisResult`.
 
 ```typescript
 const result = await client.analyzeWallet("0x...", {
-  waitForProof: true,     // also wait for CreditCoin ZK proof
+  waitForProof: true,     // also wait for CreditCoin Merkle proof
   timeout: 180_000,       // override timeout
   pollInterval: 5000,     // override poll interval
 });
@@ -407,8 +407,8 @@ import type {
 | `POST` | `/wallet/analyze/:address` | Trigger wallet analysis |
 | `GET` | `/wallet/result/:address` | Poll for score result |
 | `GET` | `/wallet/onchain/:address` | On-chain registry status |
-| `GET` | `/proof/status/address/:address` | ZK proof status by address |
-| `GET` | `/proof/status/:jobId` | ZK proof status by job ID |
+| `GET` | `/proof/status/address/:address` | Merkle proof status by address |
+| `GET` | `/proof/status/:jobId` | Merkle proof status by job ID |
 
 All endpoints require the `x-api-key` header. Requests without a valid key return `401 Unauthorized`.
 

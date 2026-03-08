@@ -18,7 +18,7 @@ contracts/
 │   ├── CredgateUSD.sol           # cdUSD — 6-decimal ERC20 stablecoin (Sepolia)
 │   ├── CreditScoreRegistry.sol   # On-chain score store with cooldown (Sepolia)
 │   ├── CreditVault.sol           # Undercollateralized lending vault (Sepolia)
-│   ├── CreditScoreUSC.sol        # ZK proof receiver — writes to Aggregator (CreditCoin USC)
+│   ├── CreditScoreUSC.sol        # Merkle proof receiver — writes to Aggregator (CreditCoin USC)
 │   └── CreditAggregator.sol      # Cross-chain global score store (CreditCoin USC)
 ├── test/
 │   └── ...                       # Foundry tests
@@ -98,7 +98,7 @@ Network:  Sepolia
 Address:  0x6f02C7BFd93050F014515FF407599dc8E651A17e
 ```
 
-The vault reads `CreditAggregator.getGlobalScore()` on CreditCoin to determine how much a wallet can borrow. This is the load-bearing reason for the CreditCoin integration — the vault requires a ZK-verified cross-chain proof before allowing a borrow, not just a locally-written score. A wallet that scored well on Sepolia but never got its proof submitted to CreditCoin USC can't borrow from the vault.
+The vault reads `CreditAggregator.getGlobalScore()` on CreditCoin to determine how much a wallet can borrow. This is the load-bearing reason for the CreditCoin integration — the vault requires a Merkle-verified cross-chain proof before allowing a borrow, not just a locally-written score. A wallet that scored well on Sepolia but never got its proof submitted to CreditCoin USC can't borrow from the vault.
 
 Credit line is determined by: `globalScore → tier → LTV % → maxLoanSizeUSD → creditLine in cdUSD (6 decimals)`.
 
@@ -106,7 +106,7 @@ Credit line is determined by: `globalScore → tier → LTV % → maxLoanSizeUSD
 
 ### `CreditScoreUSC.sol` — CreditCoin USC Testnet (chain ID 102036)
 
-The cross-chain proof receiver. This is the entry point for ZK proofs submitted by the backend's proof service. When a Sepolia score gets attested and a proof is generated, it's submitted here. This contract verifies the proof and calls `CreditAggregator.updateChainReport()` to store the result.
+The cross-chain proof receiver. This is the entry point for Merkle proofs submitted by the backend's proof service. When a Sepolia score gets attested and a proof is generated, it's submitted here. This contract verifies the proof and calls `CreditAggregator.updateChainReport()` to store the result.
 
 ```
 Network:  CreditCoin USC Testnet (chain ID 102036)
@@ -117,7 +117,7 @@ The proof submission flow:
 2. Backend monitors `RegistryWatcherService` for the `ScoreUpdated` event
 3. Proof service picks up the tx and enters the 9-stage pipeline
 4. During `waiting_attestation`, it polls CreditCoin's precompile at `0xFD3` until the Sepolia block containing the tx is attested
-5. Once attested, it generates a ZK proof and calls `CreditScoreUSC.submitProof()` (or equivalent)
+5. Once attested, it generates a Merkle proof and calls `CreditScoreUSC.submitProof()` (or equivalent)
 6. `CreditScoreUSC` verifies and forwards to `CreditAggregator`
 
 ---
@@ -224,6 +224,6 @@ After deployment, copy the new ABIs from `out/` to the frontend's `src/lib/` dir
 
 **`CreditAggregator` global score averaging:** The `_recomputeGlobal()` loop iterates over `supportedChains`. If you add many chains over time, this becomes expensive. For a small set of chains (5–10) it's fine. Worth revisiting if the system scales to many chains.
 
-**`CreditScoreUSC.sol` not shown here** — this contract is tightly coupled to CreditCoin's ZK precompile at `0xFD3` and their proof verification mechanism. Its interface toward `CreditAggregator` is fixed (`updateChainReport()`), but its internal proof verification logic is CreditCoin-specific.
+**`CreditScoreUSC.sol` not shown here** — this contract is tightly coupled to CreditCoin's Merkle precompile at `0xFD3` and their proof verification mechanism. Its interface toward `CreditAggregator` is fixed (`updateChainReport()`), but its internal proof verification logic is CreditCoin-specific.
 
 **ABIs for the frontend** are imported from `out/` after `forge build`. The frontend uses `ICreditAggregator` (an interface ABI) rather than the full `CreditAggregator` ABI since it only needs to call `getGlobalScore()`.

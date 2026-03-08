@@ -28,7 +28,7 @@ type ScoreData = {
 const PIPELINE_STEPS = [
     { label: "Analyze wallet" },
     { label: "Compute credit score" },
-    { label: "Generate ZK proof" },
+    { label: "Generate Merkle proof" },
     { label: "Submit to CreditCoin" },
 ];
 
@@ -673,7 +673,7 @@ export default function BorrowTab() {
                             }} />
                             <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.75)" }}>
                                 {proofStatus.status === "waiting_attestation" ? "Waiting for attestation"
-                                    : proofStatus.status === "generating_proof" ? "Generating ZK proof"
+                                    : proofStatus.status === "generating_proof" ? "Generating Merkle proof"
                                         : proofStatus.status === "submitting" ? "Submitting to CreditCoin"
                                             : proofStatus.status === "success" ? "Verified on-chain ✓"
                                                 : proofStatus.status === "failed" ? "Verification failed"

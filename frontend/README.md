@@ -8,7 +8,7 @@
 
 This is the frontend for CredGate — a wallet credit scoring platform built on CreditCoin. It has two main surfaces: a **dashboard** that shows your full on-chain credit analysis, and **CredLend**, an undercollateralized lending protocol that uses our own credit score model to determine how much you can borrow without posting collateral.
 
-The dashboard isn't just a number on a screen. It breaks down every signal that went into your score — your Aave lending history, stablecoin treasury behaviour, DEX maturity, cross-chain presence, and the live ZK proof status on CreditCoin. It's designed to be transparent about how creditworthiness is being evaluated, which matters if you want people to actually trust the system.
+The dashboard isn't just a number on a screen. It breaks down every signal that went into your score — your Aave lending history, stablecoin treasury behaviour, DEX maturity, cross-chain presence, and the live Merkle proof status on CreditCoin. It's designed to be transparent about how creditworthiness is being evaluated, which matters if you want people to actually trust the system.
 
 ---
 
@@ -102,7 +102,7 @@ The cards map directly to what the backend computes:
 | `DexBehaviorIntelligence` | DEX maturity score, volume, router detection, swap patterns |
 | `CrossChainIntelligence` | Chain activity, bridge usage, cross-chain maturity score |
 | `RiskEngineAnalysis` | Liquidation rate, burst wallet detection, concentration risk |
-| `OnChainStatusCard` | Sepolia `CreditScoreRegistry` status + live CreditCoin ZK proof tracker |
+| `OnChainStatusCard` | Sepolia `CreditScoreRegistry` status + live CreditCoin Merkle proof tracker |
 
 The `OnChainStatusCard` is where things get interesting — it shows the proof moving through all nine stages from `not_found` through `waiting_attestation` to `success`, with a live block countdown during the attestation wait. Users can see their score being anchored to CreditCoin in real time.
 
@@ -110,7 +110,7 @@ The `OnChainStatusCard` is where things get interesting — it shows the proof m
 
 The lending interface. Two tabs:
 
-**Borrow** — shows your credit line based on the verified score on `CreditAggregator.sol`, lets you borrow cdUSD up to your limit, and shows the full proof pipeline status while waiting for the ZK proof to complete. The borrow button has three states: analyze → proof pending → borrow enabled.
+**Borrow** — shows your credit line based on the verified score on `CreditAggregator.sol`, lets you borrow cdUSD up to your limit, and shows the full proof pipeline status while waiting for the Merkle proof to complete. The borrow button has three states: analyze → proof pending → borrow enabled.
 
 **Lend & Earn** — deposit cdUSD into `CreditVault.sol`, receive vault shares, earn yield from borrower interest. Shows your deposited balance, yield accumulated, and a withdraw flow.
 
@@ -141,7 +141,7 @@ export const creditcoinTestnet = defineChain({
 });
 ```
 
-The app needs both chains configured because some reads happen against Sepolia (`CreditScoreRegistry`, `CreditVault`) and the final score verification lives on CreditCoin USC (`CreditAggregator`). When users borrow from CredLend, the vault checks `CreditAggregator` on CreditCoin to gate access — meaning you need a valid ZK proof there before the contract lets you borrow. That's the whole point.
+The app needs both chains configured because some reads happen against Sepolia (`CreditScoreRegistry`, `CreditVault`) and the final score verification lives on CreditCoin USC (`CreditAggregator`). When users borrow from CredLend, the vault checks `CreditAggregator` on CreditCoin to gate access — meaning you need a valid Merkle proof there before the contract lets you borrow. That's the whole point.
 
 ---
 
@@ -205,7 +205,7 @@ The neon teal is used for all active states, score rings, badges, proof status i
 2. Dashboard calls `POST /wallet/analyze/:address` via `fetch`
 3. Polls `GET /wallet/result/:address` every 3 seconds until `{ status: "DONE" }`
 4. Result object (`intelligence`, `onchain`, `loanProfile`, etc.) is passed as props to each card component
-5. `OnChainStatusCard` separately polls `GET /proof/status/address/:address` every 5 seconds to track the ZK proof lifecycle independently
+5. `OnChainStatusCard` separately polls `GET /proof/status/address/:address` every 5 seconds to track the Merkle proof lifecycle independently
 
 The proof polling happens in parallel with displaying the score — you don't have to wait 30 minutes for the CreditCoin proof to see your score. The score is available as soon as the analysis job completes. The proof just adds the trustless verification layer on top.
 
@@ -213,7 +213,7 @@ The proof polling happens in parallel with displaying the score — you don't ha
 
 ## The Bigger Picture
 
-The dashboard and CredLend are proof-of-concept applications for what CreditCoin-anchored identity enables. The score your wallet earns here isn't tied to CredGate — it's stored on CreditCoin's USC layer as a ZK-verified fact that any application can read.
+The dashboard and CredLend are proof-of-concept applications for what CreditCoin-anchored identity enables. The score your wallet earns here isn't tied to CredGate — it's stored on CreditCoin's USC layer as a Merkle-verified fact that any application can read.
 
 We built CredLend to show the most obvious use case (undercollateralized lending) but the dashboard data tells a broader story. The breakdown of lending history, stablecoin treasury management, DEX behaviour, and cross-chain activity is a complete picture of what a wallet has done — not just whether it can repay a loan, but how it behaves as an on-chain participant.
 
@@ -224,6 +224,6 @@ Any application that wants to weight participation by reputation, gate access by
 ## Notes
 
 - The dashboard triggers a new analysis every time you load the page if no cached result exists. If a result is cached (score already computed), it loads immediately without hitting the backend again.
-- `BorrowTab.tsx` has a 3-state button flow: "Check Score" → "Waiting for proof" (with live countdown) → "Borrow". The borrow action only becomes available once the ZK proof reaches `success` on CreditCoin, because `CreditVault.sol` reads from `CreditAggregator` which only gets populated by the proof submission.
+- `BorrowTab.tsx` has a 3-state button flow: "Check Score" → "Waiting for proof" (with live countdown) → "Borrow". The borrow action only becomes available once the Merkle proof reaches `success` on CreditCoin, because `CreditVault.sol` reads from `CreditAggregator` which only gets populated by the proof submission.
 - The `loading.tsx` in `/dashboard` renders a skeleton layout matching the card grid — it shows while the initial analysis is running.
 - ABIs live in `src/lib/` copied from the Foundry `out/` directory. If you redeploy contracts, copy the new ABIs and update the addresses in `contracts.ts`.

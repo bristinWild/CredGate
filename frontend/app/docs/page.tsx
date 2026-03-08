@@ -69,7 +69,7 @@ function highlightTokens(code: string): string {
     const stash: string[] = [];
     let out = code.replace(/(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, (m) => {
         stash.push(`<span style="color:#a5f3fc">${m}</span>`);
-        return "\x00S" + (stash.length - 1) + "\x00";
+        return `__STASH_${stash.length - 1}__`;
     });
 
     out = out
@@ -80,7 +80,7 @@ function highlightTokens(code: string): string {
         .replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, '<span style="color:#7dd3fc">$1</span>');
 
     // Restore strings
-    out = out.replace(/\x00S(\d+)\x00/g, (_: string, i: string) => stash[+i]);
+    out = out.replace(/__STASH_(\d+)__/g, (_: string, i: string) => stash[+i]);
     return out;
 }
 
@@ -195,7 +195,7 @@ export default function DocsPage() {
                     ))}
                     <div style={{ marginTop: "32px", marginRight: "16px", padding: "10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
                         <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginBottom: "4px" }}>VERSION</p>
-                        <p style={{ fontSize: "13px", color: "#4ef2e8", fontFamily: "monospace", fontWeight: 700 }}>1.0.0</p>
+                        <p style={{ fontSize: "13px", color: "#4ef2e8", fontFamily: "monospace", fontWeight: 700 }}>1.0.6</p>
                         <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginTop: "4px" }}>credgate-sdk</p>
                     </div>
                 </aside>
@@ -214,17 +214,17 @@ export default function DocsPage() {
                                 </div>
                             </div>
                             <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", lineHeight: "1.8", margin: "0 0 16px 0" }}>
-                                Integrate wallet-based undercollateralized lending into any dApp. Analyze on-chain wallet history across Aave, DEXs, stablecoins and multiple chains — get a structured credit score, loan profile, and ZK-verified proof on CreditCoin.
+                                Integrate wallet-based undercollateralized lending into any dApp. Analyze on-chain wallet history across Aave, DEXs, stablecoins and multiple chains — get a structured credit score, loan profile, and Merkle-verified proof on CreditCoin.
                             </p>
                             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" as const }}>
-                                {[["TypeScript", "#4ef2e8"], ["ZK Proofs", "#a78bfa"], ["CreditCoin", "#f59e0b"], ["React Hooks", "#4ade80"], ["MIT", "#94a3b8"]].map(([l, c]) => <Badge key={l} label={l} color={c} />)}
+                                {[["TypeScript", "#4ef2e8"], ["Merkle Proofs", "#a78bfa"], ["CreditCoin", "#f59e0b"], ["React Hooks", "#4ade80"], ["MIT", "#94a3b8"]].map(([l, c]) => <Badge key={l} label={l} color={c} />)}
                             </div>
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                             {[
                                 { icon: "◎", title: "Wallet Analysis", desc: "Aave history, stablecoin treasury, DEX activity, cross-chain maturity — one call" },
                                 { icon: "◐", title: "Credit Scores", desc: "0–100 score, tier, max loan size, recommended LTV, full breakdown by category" },
-                                { icon: "◑", title: "ZK Proof Tracking", desc: "Real-time proof lifecycle: Sepolia attestation → CreditCoin USC → verified on-chain" },
+                                { icon: "◑", title: "Merkle Proof Tracking", desc: "Real-time proof lifecycle: Sepolia attestation → CreditCoin USC → verified on-chain" },
                                 { icon: "◒", title: "React Ready", desc: "useCredGate + useSimpleScore hooks with polling, cooldown timer, and error states" },
                             ].map(item => (
                                 <div key={item.title} style={{ padding: "18px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
@@ -354,14 +354,14 @@ const client = new CredGateClient({
                     {/* ── ANALYZE ── */}
                     <SH id="analyze">analyzeWallet()</SH>
                     <MCard method="client.analyzeWallet(address, options?)" returns="Promise<AnalysisResult>" badge="ASYNC"
-                        desc="Triggers full wallet analysis — Aave lending history, stablecoin treasury, DEX activity, cross-chain maturity. Polls until the score is ready, then emits ScoreUpdated on Sepolia which kicks off the CreditCoin ZK proof pipeline." />
+                        desc="Triggers full wallet analysis — Aave lending history, stablecoin treasury, DEX activity, cross-chain maturity. Polls until the score is ready, then emits ScoreUpdated on Sepolia which kicks off the CreditCoin Merkle proof pipeline." />
 
                     <Sub>Parameters</Sub>
                     <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px", padding: "0 16px", marginBottom: "20px" }}>
                         <Prm name="address" type="string" req desc="EVM wallet address (0x...). Checksummed or lowercase both work." />
                         <Prm name="options.pollInterval" type="number" desc="Override poll interval for this call only (ms)." />
                         <Prm name="options.timeout" type="number" desc="Override timeout for this call only (ms)." />
-                        <Prm name="options.waitForProof" type="boolean" desc="Also wait for CreditCoin ZK proof to reach success/failed before resolving." />
+                        <Prm name="options.waitForProof" type="boolean" desc="Also wait for CreditCoin Merkle proof to reach success/failed before resolving." />
                     </div>
 
                     <Sub>Full usage</Sub>
@@ -387,7 +387,7 @@ console.log(result.score.scoreBreakdown);
 // On-chain Sepolia status
 console.log(result.onchain.status);  // "UPDATED"`} />
 
-                    <Sub>Also wait for ZK proof</Sub>
+                    <Sub>Also wait for Merkle proof</Sub>
                     <CodeBlock code={`const result = await client.analyzeWallet("0x...", {
   waitForProof: true,
   timeout: 1_800_000,  // 30 min — attestation takes 10–30 min
@@ -435,7 +435,7 @@ showBorrowUI(score.loanProfile.maxLoanSizeUSD);`} />
 
                     {/* ── PROOF ── */}
                     <SH id="proof">Proof Tracking</SH>
-                    <P>After analysis, the <IC>RegistryWatcherService</IC> detects the <IC>ScoreUpdated</IC> event on Sepolia and starts the CreditCoin ZK proof. Proof status starts as <IC>not_found</IC> until that happens.</P>
+                    <P>After analysis, the <IC>RegistryWatcherService</IC> detects the <IC>ScoreUpdated</IC> event on Sepolia and starts the CreditCoin Merkle proof. Proof status starts as <IC>not_found</IC> until that happens.</P>
 
                     <Sub>getProofStatus()</Sub>
                     <MCard method="client.getProofStatus(address)" returns="Promise<ProofStatus>"
@@ -460,7 +460,7 @@ const poller = setInterval(async () => {
     checking_contract:   "🔍 Checking contract",
     fetching_tx:         "📡 Fetching Sepolia tx",
     waiting_attestation: \`⏳ \${proof.blocksRemaining} blocks left (~\${proof.estimatedWaitSeconds}s)\`,
-    generating_proof:    "⚙️  Generating ZK proof",
+    generating_proof:    "⚙️  Generating Merkle proof",
     submitting:          "📤 Submitting to CreditCoin USC",
     success:             \`✅ Verified! tx: \${proof.txHash}\`,
     failed:              \`❌ Failed: \${proof.error}\`,
@@ -494,7 +494,7 @@ const poller = setInterval(async () => {
                     <Note color="#f59e0b" icon="🔗">
                         <strong style={{ color: "#f59e0b" }}>Contract deployment:</strong> Only <IC>CreditScoreRegistry.sol</IC> is on Sepolia. All other contracts (<IC>CreditScoreUSC</IC>, <IC>CreditAggregator</IC>, <IC>CreditVault</IC>) are deployed on <IC>CreditCoin USC Testnet</IC> — chain ID <IC>102036</IC>, RPC <IC>https://rpc.usc-testnet2.creditcoin.network</IC>.
                     </Note>
-                    <P>The <IC>getOnChainStatus()</IC> call reflects the Sepolia <IC>CreditScoreRegistry</IC> state. The ZK proof (tracked separately) finalises the score on CreditCoin USC.</P>
+                    <P>The <IC>getOnChainStatus()</IC> call reflects the Sepolia <IC>CreditScoreRegistry</IC> state. The Merkle proof (tracked separately) finalises the score on CreditCoin USC.</P>
                     <CodeBlock code={`const status = await client.getOnChainStatus("0x...");
 
 // "UPDATED"         = score stored on Sepolia CreditScoreRegistry ✓
@@ -531,7 +531,7 @@ if (requestedAmount > maxLoan) {
                     <Sub>All methods at a glance</Sub>
                     <CodeBlock code={`client.analyzeWallet(address, options?)   // trigger analysis → AnalysisResult
 client.getScore(address)                  // cached score → ScoreResult | null
-client.getProofStatus(address)            // ZK proof state → ProofStatus
+client.getProofStatus(address)            // Merkle proof state → ProofStatus
 client.waitForProof(address, options?)    // poll until done → ProofStatus
 client.getOnChainStatus(address)          // Sepolia registry → OnChainStatus
 client.isEligible(address)                // quick gate → boolean
@@ -676,7 +676,7 @@ try {
   ScoreResult,         // score + tier + loanProfile + breakdown
   LoanProfile,         // { recommendedLTV, interestTier, maxLoanSizeUSD }
   ScoreBreakdown,      // { lending, stable, crossChain, dex, ageBonus, riskPenalty }
-  ProofStatus,         // ZK proof state + progress fields
+  ProofStatus,         // Merkle proof state + progress fields
   ProofStatusValue,    // union of all proof status strings
   OnChainStatus,       // Sepolia registry state
   CreditTier,          // "ELITE"|"PRIME"|"PREFERRED"|"STANDARD"|"REJECT"
@@ -756,7 +756,7 @@ try {
                             { status: "checking_contract", color: "#7dd3fc", desc: "Verifying CreditScoreUSC has aggregator + authorized source set" },
                             { status: "fetching_tx", color: "#a78bfa", desc: "Fetching the Sepolia tx from RPC" },
                             { status: "waiting_attestation", color: "#f59e0b", desc: "Polling 0xFD3 precompile — waiting for Sepolia block to be attested on CreditCoin (10–30 min, blocksRemaining available)" },
-                            { status: "generating_proof", color: "#4ef2e8", desc: "Calling proof-gen API to build the ZK Merkle proof" },
+                            { status: "generating_proof", color: "#4ef2e8", desc: "Calling proof-gen API to build the Merkle Merkle proof" },
                             { status: "submitting", color: "#818cf8", desc: "Calling CreditScoreUSC.submitScoreFromQuery() on CreditCoin USC Testnet (chain ID 102036)" },
                             { status: "success", color: "#4ade80", desc: "Score verified and stored in CreditAggregator ✓ — txHash available" },
                             { status: "failed", color: "#f87171", desc: "Proof submission failed — re-analyze to retry" },
@@ -775,7 +775,7 @@ try {
 
                     {/* Footer */}
                     <div style={{ marginTop: "64px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>credgate-sdk v1.0.0 · MIT License</span>
+                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>credgate-sdk v1.0.6 · MIT License</span>
                         <div style={{ display: "flex", gap: "16px" }}>
                             <a href="https://www.npmjs.com/package/credgate-sdk" target="_blank" rel="noreferrer"
                                 style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>npm ↗</a>

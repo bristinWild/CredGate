@@ -6,7 +6,7 @@
 
 ## What is this?
 
-CredGate is a backend service that analyzes EVM wallet history, computes a credit score, and anchors that score to CreditCoin as a permanent, ZK-verified on-chain fact. We built CredLend (our undercollateralized lending protocol) on top of it as the first demo — but the infrastructure underneath is general purpose.
+CredGate is a backend service that analyzes EVM wallet history, computes a credit score, and anchors that score to CreditCoin as a permanent, Merkle-verified on-chain fact. We built CredLend (our undercollateralized lending protocol) on top of it as the first demo — but the infrastructure underneath is general purpose.
 
 The core idea: **your on-chain behaviour is your identity**. Instead of asking who you are, we ask what you've done. Aave borrows, stablecoin treasury management, DEX maturity, cross-chain presence — all of it gets distilled into a single score that gets cryptographically verified and stored on CreditCoin. Any chain, any application can then read that score and trust it, because the proof lives on CreditCoin's USC layer — not on our server.
 
@@ -20,7 +20,7 @@ We took a different approach. CreditCoin was built specifically for credit primi
 
 **CreditCoin becomes the truth layer for on-chain identity.** Ethereum can query it. Solana can bridge it. Any new L2 can read from it on day one without needing its own credit history. The score travels with the wallet, not with the chain.
 
-The ZK proof pipeline makes this trustless. We don't ask anyone to believe our backend computed the score correctly. We generate a Merkle proof of the on-chain data, submit it to `CreditScoreUSC.sol` on CreditCoin, and it gets verified and stored in `CreditAggregator.sol`. From that point on the score is a cryptographic fact, not a centralized claim.
+The Merkle proof pipeline makes this trustless. We don't ask anyone to believe our backend computed the score correctly. We generate a Merkle proof of the on-chain data, submit it to `CreditScoreUSC.sol` on CreditCoin, and it gets verified and stored in `CreditAggregator.sol`. From that point on the score is a cryptographic fact, not a centralized claim.
 
 ---
 
@@ -54,7 +54,7 @@ The ZK proof pipeline makes this trustless. We don't ask anyone to believe our b
 │       │                        │                            │
 │       ▼                        ▼                            │
 │  ProofService ◄────────────────┘                            │
-│  (ZK proof pipeline)                                        │
+│  (Merkle proof pipeline)                                        │
 └─────────────┬───────────────────────────────────────────────┘
               │
               ▼
@@ -62,7 +62,7 @@ The ZK proof pipeline makes this trustless. We don't ask anyone to believe our b
    │   Sepolia Testnet     │         │   CreditCoin USC        │
    │                      │         │                         │
    │  CreditScoreRegistry ├────────►│  CreditScoreUSC.sol     │
-   │  .sol                │  ZK     │  CreditAggregator.sol   │
+   │  .sol                │  Merkle     │  CreditAggregator.sol   │
    │  (ScoreUpdated event)│  proof  │  (final truth store)    │
    └──────────────────────┘         └────────────────────────┘
 ```
@@ -74,10 +74,10 @@ The ZK proof pipeline makes this trustless. We don't ask anyone to believe our b
 3. `MetricsService` builds raw metrics. `RiskService` computes a 0–100 risk score. `StableScoreService` scores the stablecoin treasury. `ScoreService` combines everything into a final credit score with breakdown
 4. Score gets written to `CreditScoreRegistry.sol` on Sepolia — this emits a `ScoreUpdated` event
 5. `RegistryWatcherService` detects the `ScoreUpdated` event on Sepolia and hands it to `ProofService`
-6. `ProofService` tracks the Sepolia block through CreditCoin's attestation precompile (0xFD3), generates a ZK Merkle proof of the score data, and submits it to `CreditScoreUSC.sol` on CreditCoin USC
+6. `ProofService` tracks the Sepolia block through CreditCoin's attestation precompile (0xFD3), generates a Merkle Merkle proof of the score data, and submits it to `CreditScoreUSC.sol` on CreditCoin USC
 7. `CreditAggregator.sol` on CreditCoin stores the final verified score — this is the canonical truth
 
-Clients poll `GET /wallet/result/:address` until the job is done, then optionally poll `GET /proof/status/address/:address` to track the ZK proof through to completion.
+Clients poll `GET /wallet/result/:address` until the job is done, then optionally poll `GET /proof/status/address/:address` to track the Merkle proof through to completion.
 
 ---
 
@@ -101,7 +101,7 @@ The lending vault. Lenders deposit cdUSD, borrowers draw from their credit lines
 ### On CreditCoin USC (chain ID 102036)
 
 **`CreditScoreUSC.sol`**
-Receives ZK proof submissions. Calls `CreditAggregator` to store the verified score. Needs an authorized source (our Sepolia registry address) and an aggregator address set before it'll accept submissions.
+Receives Merkle proof submissions. Calls `CreditAggregator` to store the verified score. Needs an authorized source (our Sepolia registry address) and an aggregator address set before it'll accept submissions.
 
 **`CreditAggregator.sol`**
 The canonical truth store on CreditCoin. Stores per-chain reports and computes a global score across all chains a wallet has been scored on. This is what external protocols read when they want to verify a wallet's credit.
@@ -145,7 +145,7 @@ Max loan size is the wallet's stablecoin capital base × LTV. A PRIME wallet wit
 
 ---
 
-## ZK Proof Pipeline
+## Merkle Proof Pipeline
 
 This is the most complex part of the system and the bit that makes it actually trustless.
 
@@ -160,7 +160,7 @@ not_found
                             │                          Sepolia block is attested
                             │                          on CreditCoin — 10-30 min)
                             └─► generating_proof       (call proof-gen API to build
-                            │                          ZK Merkle proof)
+                            │                          Merkle Merkle proof)
                             └─► submitting             (call CreditScoreUSC
                             │                          .submitScoreFromQuery())
                             ├─► success                (txHash on CreditCoin)
@@ -210,7 +210,7 @@ src/
 │
 └── proof/
     ├── proof.controller.ts    # GET /proof/status/:jobId, /proof/status/address/:address
-    ├── proof.service.ts       # ZK proof pipeline state machine
+    ├── proof.service.ts       # Merkle proof pipeline state machine
     └── proof.module.ts
 ```
 
@@ -237,7 +237,7 @@ CREDIT_VAULT=0x...                # Sepolia (lending vault)
 AAVE_SUBGRAPH_URL=https://api.thegraph.com/subgraphs/name/aave/...
 
 # Proof generation
-PROOF_GEN_API_URL=https://...     # the ZK proof generation service
+PROOF_GEN_API_URL=https://...     # the Merkle proof generation service
 ```
 
 ---

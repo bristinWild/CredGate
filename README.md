@@ -6,7 +6,7 @@
 
 ## What is CredGate?
 
-CredGate turns a wallet's on-chain history into a cryptographically verified credit score. It analyses Aave lending behaviour, stablecoin treasury management, DEX activity, cross-chain presence, and wallet age — then compresses everything into a single 0–100 score that gets ZK-proved and permanently anchored to **CreditCoin USC** as a public, chain-agnostic identity fact.
+CredGate turns a wallet's on-chain history into a cryptographically verified credit score. It analyses Aave lending behaviour, stablecoin treasury management, DEX activity, cross-chain presence, and wallet age — then compresses everything into a single 0–100 score that gets Merkle-proved and permanently anchored to **CreditCoin USC** as a public, chain-agnostic identity fact.
 
 **CredLend** is the first application built on top of it: an undercollateralized lending protocol where your behaviour is your collateral. But the infrastructure beneath it is general purpose. Once a proof lives on CreditCoin, any protocol on any chain can read it.
 
@@ -16,7 +16,7 @@ CredGate turns a wallet's on-chain history into a cryptographically verified cre
 
 ```
 CredGate/
-├── backend/          # NestJS scoring engine and ZK proof pipeline
+├── backend/          # NestJS scoring engine and Merkle proof pipeline
 ├── contracts/        # Foundry smart contracts (Sepolia + CreditCoin USC)
 ├── credgate-sdk/     # TypeScript SDK for integrating CredGate into any protocol
 ├── frontend/         # Next.js dashboard and CredLend interface
@@ -37,13 +37,13 @@ Each folder has its own README with full details on setup, architecture, and dep
 │  2. POST /wallet/analyze → backend fetches on-chain data                  │
 │  3. Score computed, written to CreditScoreRegistry.sol (Sepolia)         │
 │  4. RegistryWatcher catches ScoreUpdated event                            │
-│  5. ZK proof pipeline starts (10–30 min, CreditCoin attestation wait)     │
+│  5. Merkle proof pipeline starts (10–30 min, CreditCoin attestation wait)     │
 │  6. Proof verified, score stored in CreditAggregator.sol (CreditCoin USC) │
 │  7. CreditVault.sol reads from CreditAggregator → borrowing unlocked      │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Steps 1–3 are fast (seconds). Step 6 is when borrowing is actually unlocked. The dashboard shows the score immediately after step 3 and tracks the ZK proof pipeline live through to step 6.
+Steps 1–3 are fast (seconds). Step 6 is when borrowing is actually unlocked. The dashboard shows the score immediately after step 3 and tracks the Merkle proof pipeline live through to step 6.
 
 ---
 
@@ -51,14 +51,14 @@ Steps 1–3 are fast (seconds). Step 6 is when borrowing is actually unlocked. T
 
 ### `backend/`
 
-NestJS service that does the heavy lifting. Fetches data from Aave subgraphs, stablecoin transfer graphs, DEX activity, and cross-chain RPCs. Runs a multi-component scoring pipeline. Writes scores to Sepolia, then watches for the event and drives the ZK proof pipeline to CreditCoin.
+NestJS service that does the heavy lifting. Fetches data from Aave subgraphs, stablecoin transfer graphs, DEX activity, and cross-chain RPCs. Runs a multi-component scoring pipeline. Writes scores to Sepolia, then watches for the event and drives the Merkle proof pipeline to CreditCoin.
 
 **Key services:**
 - `WalletProcessor` — orchestrates the full analysis job
 - `ScoreService` / `RiskService` / `StableScoreService` / `MetricsService` — scoring components
 - `CreditRegistryService` — writes to and reads from `CreditScoreRegistry.sol`
 - `RegistryWatcherService` — watches Sepolia for `ScoreUpdated` events
-- `ProofService` — 9-stage ZK proof state machine
+- `ProofService` — 9-stage Merkle proof state machine
 
 **API:**
 
@@ -67,7 +67,7 @@ NestJS service that does the heavy lifting. Fetches data from Aave subgraphs, st
 | POST | `/wallet/analyze/:address` | Trigger analysis |
 | GET | `/wallet/result/:address` | Poll for result |
 | GET | `/wallet/onchain/:address` | Sepolia registry status |
-| GET | `/proof/status/address/:address` | ZK proof status |
+| GET | `/proof/status/address/:address` | Merkle proof status |
 | GET | `/proof/status/:jobId` | Proof status by job ID |
 
 See [`backend/README.md`](./backend/README.md) for full scoring model, proof pipeline, and environment variables.
@@ -83,7 +83,7 @@ Foundry project. Five contracts split across two chains.
 | `CreditScoreRegistry.sol` | Sepolia | First-write score store, emits proof trigger events |
 | `CredgateUSD.sol` (cdUSD) | Sepolia | 6-decimal stablecoin used as lending asset |
 | `CreditVault.sol` | Sepolia | ERC4626 vault — undercollateralized lending, reads from CreditAggregator |
-| `CreditScoreUSC.sol` | CreditCoin USC | ZK proof receiver, verifies Merkle proofs via precompile |
+| `CreditScoreUSC.sol` | CreditCoin USC | Merkle proof receiver, verifies Merkle proofs via precompile |
 | `CreditAggregator.sol` | CreditCoin USC | Canonical multi-chain score store, global average across all chains |
 
 **Deployed addresses (testnet):**
@@ -100,7 +100,7 @@ See [`contracts/README.md`](./contracts/README.md) for deployment order, contrac
 
 ### `credgate-sdk/`
 
-TypeScript SDK for integrating CredGate into any lending protocol or application. Wraps the backend API with typed responses, automatic polling, configurable timeouts, and optional ZK proof waiting.
+TypeScript SDK for integrating CredGate into any lending protocol or application. Wraps the backend API with typed responses, automatic polling, configurable timeouts, and optional Merkle proof waiting.
 
 ```typescript
 import { CredGateClient } from 'credgate-sdk';
@@ -121,7 +121,7 @@ See [`credgate-sdk/README.md`](./credgate-sdk/README.md) for full API reference.
 
 Next.js 14 app with two surfaces:
 
-**Dashboard** — full wallet analysis view. Shows the credit score ring, breakdown by component (lending, stable, DEX, cross-chain, age), executive summary, loan eligibility, Aave history, and a live ZK proof tracker with 9-stage progress through to CreditCoin confirmation.
+**Dashboard** — full wallet analysis view. Shows the credit score ring, breakdown by component (lending, stable, DEX, cross-chain, age), executive summary, loan eligibility, Aave history, and a live Merkle proof tracker with 9-stage progress through to CreditCoin confirmation.
 
 **CredLend** — the lending interface. Borrow and Lend tabs. The borrow flow has three states: check score → wait for proof → borrow. The borrow button only enables when `proof.status === "success"` on CreditCoin, which is enforced by `CreditVault.sol` reading from `CreditAggregator.sol` — not just frontend logic.
 
@@ -161,9 +161,9 @@ Credit line thresholds (from `buildLoanProfile` in `wallet.processor.ts`): score
 
 ---
 
-## ZK Proof Pipeline
+## Merkle Proof Pipeline
 
-The proof is what makes the score trustless. Once a score is written to `CreditScoreRegistry.sol` on Sepolia, the backend generates a ZK Merkle proof that the score data exists in that transaction, then submits it to CreditCoin's precompile-backed verifier. This converts a backend claim into a cryptographic fact.
+The proof is what makes the score trustless. Once a score is written to `CreditScoreRegistry.sol` on Sepolia, the backend generates a Merkle Merkle proof that the score data exists in that transaction, then submits it to CreditCoin's precompile-backed verifier. This converts a backend claim into a cryptographic fact.
 
 **9 stages:**
 ```
@@ -179,7 +179,7 @@ The `waiting_attestation` stage (10–30 min) is the bottleneck — CreditCoin m
 
 Most on-chain credit systems store scores on a single chain. That means every other chain either has to bridge the score (latency, trust assumptions) or ignore it.
 
-CreditCoin's USC layer is designed specifically for cross-chain credit primitives. By anchoring scores there, we get a **chain-neutral truth layer** — any protocol on any EVM chain can call `CreditAggregator.getGlobalScore(address)` on CreditCoin and get a ZK-verified answer without trusting our backend.
+CreditCoin's USC layer is designed specifically for cross-chain credit primitives. By anchoring scores there, we get a **chain-neutral truth layer** — any protocol on any EVM chain can call `CreditAggregator.getGlobalScore(address)` on CreditCoin and get a Merkle-verified answer without trusting our backend.
 
 The `CreditAggregator` multi-chain averaging is a further property: as a wallet accumulates verified scores from multiple chains, its `globalScore` is averaged across all of them. More chains = more data = more trustworthy score. A wallet with consistent behaviour across Ethereum, Arbitrum, and Optimism has a meaningfully different score from a wallet that only has history on one chain.
 

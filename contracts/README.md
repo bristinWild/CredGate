@@ -6,7 +6,7 @@
 
 ## What's here
 
-Five contracts split across two chains. Three live on **Sepolia** (staging registry, stablecoin, lending vault) and two live on **CreditCoin USC Testnet** (the cross-chain proof receiver and global score aggregator). Together they form the on-chain half of the CredGate system — the backend scores wallets and writes to these contracts, and any application that wants to read a wallet's credit score can read from them.
+Five contracts split across two chains. One live on **Sepolia** (staging registry) and 4 live on **CreditCoin USC Testnet** (CreditVault, CredgateUSD , the cross-chain proof receiver and global score aggregator). Together they form the on-chain half of the CredGate system — the backend scores wallets and writes to these contracts, and any application that wants to read a wallet's credit score can read from them.
 
 ---
 
@@ -15,9 +15,9 @@ Five contracts split across two chains. Three live on **Sepolia** (staging regis
 ```
 contracts/
 ├── src/
-│   ├── CredgateUSD.sol           # cdUSD — 6-decimal ERC20 stablecoin (Sepolia)
+│   ├── CredgateUSD.sol           # cdUSD — 6-decimal ERC20 stablecoin (CreditCoin USC)
 │   ├── CreditScoreRegistry.sol   # On-chain score store with cooldown (Sepolia)
-│   ├── CreditVault.sol           # Undercollateralized lending vault (Sepolia)
+│   ├── CreditVault.sol           # Undercollateralized lending vault (CreditCoin USC)
 │   ├── CreditScoreUSC.sol        # Merkle proof receiver — writes to Aggregator (CreditCoin USC)
 │   └── CreditAggregator.sol      # Cross-chain global score store (CreditCoin USC)
 ├── test/
@@ -37,14 +37,14 @@ contracts/
 
 ## Contracts
 
-### `CredgateUSD.sol` — Sepolia
+### `CredgateUSD.sol` — CreditCoin USC
 
 The protocol stablecoin. Standard ERC20 with 6 decimals (matching USDC conventions), ownable mint/burn, and pausable transfers. The backend mints cdUSD to borrowers when a loan is approved, and `CreditVault` burns it on repayment.
 
 ```
 Symbol:   cdUSD
 Decimals: 6
-Network:  Sepolia
+Network:  CreditCoin USC
 Address:  0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC
 ```
 
@@ -89,12 +89,12 @@ CreditScoreRegistry.CreditData memory data = registry.getScore(userAddress);
 
 ---
 
-### `CreditVault.sol` — Sepolia
+### `CreditVault.sol` — CreditCoin USC
 
 The undercollateralized lending vault. Depositors provide cdUSD liquidity and earn yield; borrowers draw from that liquidity based on their credit score from `CreditAggregator` on CreditCoin USC (not from the Sepolia registry directly — the vault trusts the CreditCoin-verified global score).
 
 ```
-Network:  Sepolia
+Network:  CreditCoin USC
 Address:  0x6f02C7BFd93050F014515FF407599dc8E651A17e
 ```
 
@@ -167,18 +167,17 @@ function getGlobalScore(address user) external view returns (uint256)
 These contracts have dependencies between them, so deploy in this order:
 
 **Sepolia:**
-1. `CredgateUSD` — pass `initialOwner` (backend deployer wallet initially, transfer to vault after)
-2. `CreditScoreRegistry` — pass `_scorer` (backend hot wallet)
-3. `CreditVault` — needs `CreditAggregator` address on CreditCoin USC, so deploy Sepolia first and come back to configure
+1. `CreditScoreRegistry` — pass `_scorer` (backend hot wallet)
+
 
 **CreditCoin USC:**
+2. `CredgateUSD` — pass `initialOwner` (backend deployer wallet initially, transfer to vault after)
+3. `CreditVault` — needs `CreditAggregator` address on CreditCoin USC
 4. `CreditAggregator` — pass `_usc` (zero address initially) and `_chains` (e.g., `[11155111]` for Sepolia)
 5. `CreditScoreUSC` — pass `CreditAggregator` address
 
 **Back on CreditCoin USC:**
 6. Call `CreditAggregator.setUSC(CreditScoreUSC_address)` to wire them together
-
-**Back on Sepolia:**
 7. Configure `CreditVault` with `CreditAggregator` address on CreditCoin USC
 8. Transfer `CredgateUSD` ownership to `CreditVault`
 

@@ -20,7 +20,7 @@ The dashboard isn't just a number on a screen. It breaks down every signal that 
 - **Tailwind CSS** with CSS custom properties for theming
 - **TypeScript** throughout
 
-Connects to two chains: **Sepolia** (where `CreditScoreRegistry.sol` and `CreditVault.sol` live) and **CreditCoin USC Testnet** (chain ID `102036`, where `CreditAggregator.sol` stores verified scores).
+Chains: **Sepolia** (where `CreditScoreRegistry.sol` live) and **CreditCoin USC Testnet** (chain ID `102036`, where `CreditAggregator.sol` stores verified scores).
 
 ---
 
@@ -150,8 +150,8 @@ The app needs both chains configured because some reads happen against Sepolia (
 ```typescript
 // lib/contracts.ts
 export const CONTRACTS = {
-    CDUSD:            "0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC", // Sepolia
-    CREDIT_VAULT:     "0x6f02C7BFd93050F014515FF407599dc8E651A17e", // Sepolia
+    CDUSD:            "0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC", // CreditCoin USC
+    CREDIT_VAULT:     "0x6f02C7BFd93050F014515FF407599dc8E651A17e", // CreditCoin USC
     CREDIT_AGGREGATOR:"0x04F3aBf34A59AB5e3F1555b678D256Fe8DfF9059", // CreditCoin USC
 } as const;
 ```

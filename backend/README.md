@@ -92,11 +92,6 @@ The staging layer. Our scorer writes scores here. Has a configurable cooldown (d
 scores[address] → { creditScore, riskScore, stableScore, reportHash, updatedAt }
 ```
 
-**`CredgateUSD.sol` (cdUSD)**
-Our stablecoin. 6 decimals, mintable by owner. Used as the borrowing asset in CredLend. Keeps things simple during testnet.
-
-**`CreditVault.sol`**
-The lending vault. Lenders deposit cdUSD, borrowers draw from their credit lines. Credit lines are gated by the score on CreditAggregator — if you don't have a verified proof on CreditCoin, you can't borrow.
 
 ### On CreditCoin USC (chain ID 102036)
 
@@ -106,12 +101,20 @@ Receives Merkle proof submissions. Calls `CreditAggregator` to store the verifie
 **`CreditAggregator.sol`**
 The canonical truth store on CreditCoin. Stores per-chain reports and computes a global score across all chains a wallet has been scored on. This is what external protocols read when they want to verify a wallet's credit.
 
+
 ```
 reports[address][chainKey] → ChainReport
 globalScore[address] → averaged across all supported chains
 ```
-
 The multi-chain averaging in `CreditAggregator` is worth noting — as more chains submit scores for the same wallet, the global score becomes more accurate. A wallet with consistent behaviour on Ethereum, Arbitrum, and Polygon will have a more trustworthy score than one that only has history on one chain.
+
+**`CredgateUSD.sol` (cdUSD)**
+Our stablecoin. 6 decimals, mintable by owner. Used as the borrowing asset in CredLend. Keeps things simple during testnet.
+
+**`CreditVault.sol`**
+The lending vault. Lenders deposit cdUSD, borrowers draw from their credit lines. Credit lines are gated by the score on CreditAggregator — if you don't have a verified proof on CreditCoin, you can't borrow.
+
+
 
 ---
 
@@ -231,7 +234,7 @@ CREDITCOIN_PRIVATE_KEY=0x...      # wallet that calls CreditScoreUSC.submitScore
 CREDIT_SCORE_REGISTRY=0x...       # Sepolia
 CREDIT_SCORE_USC=0x...            # CreditCoin USC
 CREDIT_AGGREGATOR=0x...           # CreditCoin USC
-CREDIT_VAULT=0x...                # Sepolia (lending vault)
+CREDIT_VAULT=0x...                # CreditCoin USC (lending vault)
 
 # Subgraphs
 AAVE_SUBGRAPH_URL=https://api.thegraph.com/subgraphs/name/aave/...
@@ -291,8 +294,8 @@ The point is: once a proof lives on CreditCoin, it's not our data anymore. It's 
 | Contract | Chain | Address |
 |----------|-------|---------|
 | CreditScoreRegistry | Sepolia | `0x47d3adBB126AB13E1b6a4f76D13927E16bA14817` |
-| CredgateUSD (cdUSD) | Sepolia | `0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC` |
-| CreditVault | Sepolia | `0x6f02C7BFd93050F014515FF407599dc8E651A17e` |
+| CredgateUSD (cdUSD) | Creditcoin USC | `0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC` |
+| CreditVault | Creditcoin USC | `0x6f02C7BFd93050F014515FF407599dc8E651A17e` |
 | CreditAggregator | CreditCoin USC | `0x04F3aBf34A59AB5e3F1555b678D256Fe8DfF9059` |
 | CreditScoreUSC | CreditCoin USC | `0x620431B91db7a499eeC0eC9a4c817dA3B5A90861` |
 

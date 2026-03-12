@@ -81,8 +81,8 @@ Foundry project. Five contracts split across two chains.
 | Contract | Chain | Role |
 |----------|-------|------|
 | `CreditScoreRegistry.sol` | Sepolia | First-write score store, emits proof trigger events |
-| `CredgateUSD.sol` (cdUSD) | Sepolia | 6-decimal stablecoin used as lending asset |
-| `CreditVault.sol` | Sepolia | ERC4626 vault — undercollateralized lending, reads from CreditAggregator |
+| `CredgateUSD.sol` (cdUSD) | Creditcoin USC | 6-decimal stablecoin used as lending asset |
+| `CreditVault.sol` | Creditcoin USC | ERC4626 vault — undercollateralized lending, reads from CreditAggregator |
 | `CreditScoreUSC.sol` | CreditCoin USC | Merkle proof receiver, verifies Merkle proofs via precompile |
 | `CreditAggregator.sol` | CreditCoin USC | Canonical multi-chain score store, global average across all chains |
 
@@ -90,8 +90,8 @@ Foundry project. Five contracts split across two chains.
 
 | Contract | Chain | Address |
 |----------|-------|---------|
-| CredgateUSD (cdUSD) | Sepolia | `0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC` |
-| CreditVault | Sepolia | `0x6f02C7BFd93050F014515FF407599dc8E651A17e` |
+| CredgateUSD (cdUSD) | Creditcoin USC | `0x47878958595E4F5CA7545ebCbDD35fE2FD9aD6BC` |
+| CreditVault | Creditcoin USC | `0x6f02C7BFd93050F014515FF407599dc8E651A17e` |
 | CreditAggregator | CreditCoin USC (102036) | `0x04F3aBf34A59AB5e3F1555b678D256Fe8DfF9059` |
 
 See [`contracts/README.md`](./contracts/README.md) for deployment order, contract interfaces, and Foundry commands.
@@ -128,7 +128,7 @@ Next.js 14 app with two surfaces:
 **Stack:** Next.js 14 App Router, wagmi v2, RainbowKit, viem, Tailwind CSS, TypeScript.
 
 **Chain config:**
-- Sepolia (CreditScoreRegistry, CreditVault)
+- Sepolia (CreditScoreRegistry)
 - CreditCoin USC Testnet (`id: 102036`, `rpc: https://rpc.usc-testnet2.creditcoin.network`)
 
 See [`frontend/README.md`](./frontend/README.md) for component map, card-to-API mapping, and design system.
